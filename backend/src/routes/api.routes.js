@@ -1,0 +1,36 @@
+import { Router } from 'express';
+import auditMetaMiddleware from '../middlewares/auditMeta.middleware.js';
+import { requireAuth } from '../middlewares/auth.middleware.js';
+import authRoutes from './auth.routes.js';
+import systemRoutes from './system.routes.js';
+import catalogRoutes from './catalog.routes.js';
+import companyRoutes from './company.routes.js';
+import departmentRoutes from './department.routes.js';
+import auditRoutes from './audit.routes.js';
+import approvalRoutes from './approval.routes.js';
+import versionRoutes from './version.routes.js';
+import attachmentRoutes from './attachment.routes.js';
+import notificationRoutes from './notification.routes.js';
+import reportsRoutes from './reports.routes.js';
+import subscriptionRoutes from './subscription.routes.js';
+import { publicWebhookRouter, protectedIntegrationRouter } from './lead-integration.routes.js';
+
+const router = Router();
+router.use(auditMetaMiddleware);
+router.use(authRoutes);
+router.use(systemRoutes);
+router.use(publicWebhookRouter);
+router.use(requireAuth);
+router.use(catalogRoutes);
+router.use(companyRoutes);
+router.use(subscriptionRoutes);
+router.use(departmentRoutes);
+router.use(reportsRoutes);
+router.use(auditRoutes);
+router.use(approvalRoutes);
+router.use(versionRoutes);
+router.use(attachmentRoutes);
+router.use(notificationRoutes);
+router.use(protectedIntegrationRouter);
+
+export default router;

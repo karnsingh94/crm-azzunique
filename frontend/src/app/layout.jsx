@@ -1,0 +1,30 @@
+import './globals.css';
+import { ThemeProvider } from '@/context/ThemeContext';
+import { CompanyAuthProvider } from '@/context/CompanyAuthContext';
+
+export const metadata = {
+  title: 'AZZUNIQUE CRM & Sales',
+  description: 'Multi-tenant CRM and Sales workspace',
+  icons: {
+    icon: '/favicon.ico',
+  },
+};
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+};
+
+export default function RootLayout({ children }) {
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <body suppressHydrationWarning>
+        <ThemeProvider>
+          <CompanyAuthProvider>
+            {children}
+          </CompanyAuthProvider>
+        </ThemeProvider>
+      </body>
+    </html>
+  );
+}

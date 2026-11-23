@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Environment files (keep templates)
+.env
+.env.local
+.env.*.local
+**/.env
+**/.env.local
+**/.env.*.local
+!.env.example
+!**/.env.example
+
+# Framework and build output
+.next/
+**/.next/
+out/
+**/out/
+build/
+**/build/
+dist/
+**/dist/
+coverage/
+**/coverage/
+
+# Logs and caches
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.eslintcache
+*.tsbuildinfo
+
+# Deployment tooling
+.vercel/
+
+# Editors and operating systems
+.vscode/
+.idea/
+.DS_Store
+**/.DS_Store
+Thumbs.db
