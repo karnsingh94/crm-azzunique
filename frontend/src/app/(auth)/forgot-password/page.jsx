@@ -9,13 +9,11 @@ export default function SuperAdminForgotPasswordPage() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [devResetLink, setDevResetLink] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage('');
-    setDevResetLink('');
 
     const cleanEmail = email.trim();
     if (!cleanEmail) {
@@ -38,9 +36,6 @@ export default function SuperAdminForgotPasswordPage() {
 
       if (res.ok) {
         setSubmitted(true);
-        if (data.devResetLink) {
-          setDevResetLink(data.devResetLink);
-        }
       } else {
         setErrorMessage(data.message || 'Unable to process reset request. Please try again.');
       }
@@ -53,6 +48,7 @@ export default function SuperAdminForgotPasswordPage() {
 
   return (
     <div
+      className="password-recovery-page"
       style={{
         minHeight: '100vh',
         background: 'linear-gradient(135deg, #f8fafc 0%, #f5f0ff 45%, #ede9fe 100%)',
@@ -64,6 +60,7 @@ export default function SuperAdminForgotPasswordPage() {
       }}
     >
       <div
+        className="password-recovery-card"
         style={{
           width: '100%',
           maxWidth: '460px',
@@ -186,34 +183,6 @@ export default function SuperAdminForgotPasswordPage() {
               </div>
             </div>
 
-            {/* Local Development Quick Link Banner */}
-            {devResetLink && (
-              <div
-                style={{
-                  marginBottom: '1.5rem',
-                  padding: '0.85rem 1rem',
-                  borderRadius: '10px',
-                  background: '#f0f9ff',
-                  border: '1px dashed #0284c7',
-                  fontSize: '0.8rem',
-                  color: '#0369a1',
-                }}
-              >
-                <div style={{ fontWeight: 700, marginBottom: '0.35rem' }}>⚙️ Development Verification Link:</div>
-                <a
-                  href={devResetLink}
-                  style={{
-                    color: '#7f22fe',
-                    fontWeight: 600,
-                    wordBreak: 'break-all',
-                    textDecoration: 'underline',
-                  }}
-                >
-                  Click here to proceed to Password Reset
-                </a>
-              </div>
-            )}
-
             <div style={{ textAlign: 'center' }}>
               <Link
                 href="/login"
@@ -247,6 +216,7 @@ export default function SuperAdminForgotPasswordPage() {
                 Work Email Address
               </label>
               <input
+                className="password-recovery-input"
                 id="forgot-email"
                 type="email"
                 required

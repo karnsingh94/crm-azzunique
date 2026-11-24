@@ -365,20 +365,52 @@ const ALL_SEED_CATALOG = [
 export const SEED_CATALOG = ALL_SEED_CATALOG.filter((service) => service.code === 'crm_sales');
 
 // Nine-service suite placeholder
+function redactSeedDiagnostic(value, key = '') {
+  if (/(pass|secret|token|credential|authorization|api.?key|database.?url)/i.test(key)) {
+    return '[REDACTED]';
+  }
+  if (typeof value === 'string') {
+    return value
+      .replace(/\bmysql(?:s)?:\/\/[^\s"'<>]+/gi, 'mysql://[REDACTED]')
+      .replace(/((?:DATABASE_URL|[A-Z0-9_]*PASS(?:WORD)?|password|passwd|secret|token|api[_-]?key|authorization)\s*[:=]\s*)(?:"[^"]*"|'[^']*'|[^\s,;]+)/gi, '$1[REDACTED]');
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => redactSeedDiagnostic(item));
+  }
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).map(([field, item]) => [field, redactSeedDiagnostic(item, field)])
+    );
+  }
+  return value;
+}
+
 export async function seedDatabase() {
   console.log('🌱 Starting idempotent database seeding...');
 
   // 1. Seed the initial platform administrator without overwriting existing credentials.
-  await prisma.superAdmin.upsert({
-    where: { email: initialSuperAdmin.email },
-    update: {},
-    create: {
-      name: initialSuperAdmin.name,
-      email: initialSuperAdmin.email,
-      passwordHash: await bcrypt.hash(initialSuperAdmin.password, 10),
-      status: 'ACTIVE',
-    },
-  });
+  try {
+    await prisma.superAdmin.upsert({
+      where: { email: initialSuperAdmin.email },
+      update: {},
+      create: {
+        name: initialSuperAdmin.name,
+        email: initialSuperAdmin.email,
+        passwordHash: await bcrypt.hash(initialSuperAdmin.password, 10),
+        status: 'ACTIVE',
+      },
+    });
+  } catch (error) {
+    console.error('[Seed] SuperAdmin upsert failed:', JSON.stringify({
+      name: redactSeedDiagnostic(error?.name ?? 'UnknownError'),
+      code: redactSeedDiagnostic(error?.code ?? null),
+      message: redactSeedDiagnostic(error?.message ?? String(error)),
+      meta: redactSeedDiagnostic(error?.meta ?? null),
+      clientVersion: redactSeedDiagnostic(error?.clientVersion ?? null),
+      stack: redactSeedDiagnostic(error?.stack ?? null),
+    }, null, 2));
+    throw error;
+  }
   console.log(`✅ Initial Super Admin ensured: ${initialSuperAdmin.email}`);
 
   // 2. Seed Fixed Nine-Service Catalogue

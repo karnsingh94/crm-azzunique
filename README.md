@@ -30,6 +30,8 @@ Requirements: Node.js 20 or 22, npm 10+, and MySQL 8+.
    ```
 
    The API starts on `http://localhost:5000`.
+
+   Password recovery uses Nodemailer. Set `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, and optionally `SMTP_FROM` in `backend/.env`; the Prisma migration creates the persistent reset-token table.
 3. Configure `frontend/.env.local` from `frontend/.env.example` (API URL defaults to `http://localhost:5000/api`), then run:
 
    ```sh

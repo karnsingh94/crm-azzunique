@@ -13,6 +13,7 @@ import {
 
 const CompanyAuthContext = createContext(null);
 const COMPANY_USER_ROLES = ['COMPANY_ADMIN', 'DEPARTMENT_HEAD', 'SERVICE_HEAD', 'TEAM_LEADER', 'EMPLOYEE'];
+const PUBLIC_AUTH_PATHS = new Set(['/login', '/forgot-password', '/reset-password']);
 
 function formatRoleTitle(role, departmentName) {
   switch (role) {
@@ -148,7 +149,7 @@ export function CompanyAuthProvider({ children }) {
       return;
     }
 
-    if (currentPath === '/login') {
+    if (PUBLIC_AUTH_PATHS.has(currentPath)) {
       setIsLoading(false);
       return;
     }
@@ -187,7 +188,7 @@ export function CompanyAuthProvider({ children }) {
           setCurrentUser(null);
           setActiveCompany(null);
           setAuthorizedCompanies([]);
-          if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+          if (typeof window !== 'undefined' && !PUBLIC_AUTH_PATHS.has(window.location.pathname)) {
             const currentPath = window.location.pathname;
             const redirectTarget = currentPath && currentPath !== '/' ? currentPath : '/dashboard';
             router.replace(`/login?redirect=${encodeURIComponent(redirectTarget)}`);
@@ -200,7 +201,7 @@ export function CompanyAuthProvider({ children }) {
         setIsLoading(false);
         setCurrentUser(null);
         setActiveCompany(null);
-        if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+        if (typeof window !== 'undefined' && !PUBLIC_AUTH_PATHS.has(window.location.pathname)) {
           const currentPath = window.location.pathname;
           const redirectTarget = currentPath && currentPath !== '/' ? currentPath : '/dashboard';
           router.replace(`/login?redirect=${encodeURIComponent(redirectTarget)}`);
