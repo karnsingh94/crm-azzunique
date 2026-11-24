@@ -104,6 +104,7 @@ function ResetPasswordForm() {
 
   return (
     <div
+      className="password-recovery-page"
       style={{
         minHeight: '100vh',
         background: 'linear-gradient(135deg, #f8fafc 0%, #f5f0ff 45%, #ede9fe 100%)',
@@ -115,6 +116,7 @@ function ResetPasswordForm() {
       }}
     >
       <div
+        className="password-recovery-card"
         style={{
           width: '100%',
           maxWidth: '480px',
@@ -335,6 +337,7 @@ function ResetPasswordForm() {
               </label>
               <div style={{ position: 'relative' }}>
                 <input
+                  className="password-recovery-input"
                   id="super-reset-new-password"
                   type={showPassword ? 'text' : 'password'}
                   required
@@ -392,6 +395,7 @@ function ResetPasswordForm() {
               </label>
               <div style={{ position: 'relative' }}>
                 <input
+                  className="password-recovery-input"
                   id="super-reset-confirm-password"
                   type={showConfirmPassword ? 'text' : 'password'}
                   required

@@ -8,10 +8,6 @@ import logger from '../utils/logger.js';
 import { sendPasswordResetEmail } from '../utils/mailer.js';
 import { normalizeTeamPermissions } from '../utils/team-permissions.js';
 
-// In-memory store for active password reset tokens
-// key: tokenHash (SHA-256), value: { email, userId, userType, expiresAt, used }
-const RESET_TOKENS = new Map();
-
 // In-memory password override cache to immediately support resets for both DB & bootstrap fallback accounts
 const PASSWORD_OVERRIDES = new Map();
 const COMPANY_STAFF_ROLES = ['DEPARTMENT_HEAD', 'SERVICE_HEAD', 'TEAM_LEADER', 'EMPLOYEE'];
@@ -717,7 +713,7 @@ export const authService = {
    * Returns generic safe response without leaking user existence
    */
   async requestPasswordReset({ email }, meta = {}) {
-    if (!email || typeof email !== 'string') {
+    if (typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       const error = new Error('Valid email address is required.');
       error.statusCode = 400;
       throw error;
@@ -733,12 +729,10 @@ export const authService = {
     let account = null;
 
     // 1. Super Admin check
-    try {
-      const sa = await prisma.superAdmin.findUnique({ where: { email: cleanEmail } });
-      if (sa && sa.status === 'ACTIVE') {
-        account = { id: sa.id.toString(), email: sa.email, userType: 'SUPER_ADMIN' };
-      }
-    } catch {}
+    const sa = await prisma.superAdmin.findUnique({ where: { email: cleanEmail } });
+    if (sa && sa.status === 'ACTIVE') {
+      account = { id: sa.id.toString(), email: sa.email, userType: 'SUPER_ADMIN' };
+    }
 
     if (!account && cleanEmail === BOOTSTRAP_SUPER_ADMIN.email.toLowerCase()) {
       account = { id: BOOTSTRAP_SUPER_ADMIN.id, email: BOOTSTRAP_SUPER_ADMIN.email, userType: 'SUPER_ADMIN' };
@@ -746,27 +740,23 @@ export const authService = {
 
     // 2. Client Admin check
     if (!account) {
-      try {
-        const ca = await prisma.clientAdmin.findFirst({
-          where: { email: cleanEmail, deletedAt: null, status: 'ACTIVE' },
-        });
-        if (ca) {
-          account = { id: ca.id.toString(), email: ca.email, userType: 'CLIENT_ADMIN' };
-        }
-      } catch {}
+      const ca = await prisma.clientAdmin.findFirst({
+        where: { email: cleanEmail, deletedAt: null, status: 'ACTIVE' },
+      });
+      if (ca) {
+        account = { id: ca.id.toString(), email: ca.email, userType: 'CLIENT_ADMIN' };
+      }
     }
 
     // 3. Company Employee check
     if (!account) {
-      try {
-        const emp = await prisma.companyEmployee.findFirst({
-          where: { email: cleanEmail, status: 'ACTIVE' },
-          include: { clientAdmin: true },
-        });
-        if (emp && emp.clientAdmin && emp.clientAdmin.status === 'ACTIVE') {
-          account = { id: emp.id.toString(), email: emp.email, userType: 'COMPANY_EMPLOYEE' };
-        }
-      } catch {}
+      const emp = await prisma.companyEmployee.findFirst({
+        where: { email: cleanEmail, status: 'ACTIVE' },
+        include: { clientAdmin: true },
+      });
+      if (emp && emp.clientAdmin && emp.clientAdmin.status === 'ACTIVE') {
+        account = { id: emp.id.toString(), email: emp.email, userType: 'COMPANY_EMPLOYEE' };
+      }
     }
 
     // 4. Fallback user check
@@ -786,29 +776,31 @@ export const authService = {
     const rawToken = crypto.randomBytes(32).toString('hex');
     const tokenHash = hashResetToken(rawToken);
     const ttlMs = 15 * 60 * 1000; // 15 minutes TTL
+    const resetUrl = new URL('/reset-password', process.env.CLIENT_URL || 'http://localhost:3000');
+    resetUrl.searchParams.set('token', rawToken);
+    resetUrl.searchParams.set('email', cleanEmail);
 
-    RESET_TOKENS.set(tokenHash, {
-      email: cleanEmail,
-      userId: account.id,
-      userType: account.userType,
-      expiresAt: Date.now() + ttlMs,
-      used: false,
+    await prisma.passwordResetToken.deleteMany({ where: { expiresAt: { lt: new Date() } } });
+    await prisma.passwordResetToken.create({
+      data: {
+        tokenHash,
+        email: cleanEmail,
+        userId: account.id,
+        userType: account.userType,
+        expiresAt: new Date(Date.now() + ttlMs),
+      },
     });
 
-    // Cleanup expired tokens periodically
-    const now = Date.now();
-    for (const [hash, record] of RESET_TOKENS.entries()) {
-      if (record.used || now > record.expiresAt) {
-        RESET_TOKENS.delete(hash);
+    try {
+      await sendPasswordResetEmail({ to: cleanEmail, resetUrl: resetUrl.toString() });
+    } catch (err) {
+      try {
+        await prisma.passwordResetToken.deleteMany({ where: { tokenHash } });
+      } catch (cleanupError) {
+        logger.error(`[Auth] Failed to remove undelivered password reset token: ${cleanupError.message}`);
       }
+      throw err;
     }
-
-    // Determine correct frontend base URL
-      frontendBase = meta.origin || process.env.CLIENT_URL || 'http://localhost:3000';
-    const resetUrl = `${frontendBase}/reset-password?token=${rawToken}&email=${encodeURIComponent(cleanEmail)}`;
-
-    // Dispatch email safely
-    await sendPasswordResetEmail({ to: cleanEmail, resetUrl });
 
     await auditService.logAudit({
       action: 'FORGOT_PASSWORD_REQUEST',
@@ -823,7 +815,7 @@ export const authService = {
     if (process.env.NODE_ENV !== 'production') {
       return {
         ...genericResponse,
-        devResetLink: resetUrl,
+        devResetLink: resetUrl.toString(),
         resetToken: rawToken,
       };
     }
@@ -840,22 +832,18 @@ export const authService = {
     }
 
     const tokenHash = hashResetToken(token.trim());
-    const record = RESET_TOKENS.get(tokenHash);
+    const record = await prisma.passwordResetToken.findUnique({ where: { tokenHash } });
 
     if (!record) {
       return { valid: false, message: 'Password reset link is invalid or has already been used.' };
     }
 
-    if (record.used) {
-      return { valid: false, message: 'Password reset link has already been used.' };
-    }
-
-    if (Date.now() > record.expiresAt) {
-      RESET_TOKENS.delete(tokenHash);
+    if (Date.now() >= record.expiresAt.getTime()) {
+      await prisma.passwordResetToken.deleteMany({ where: { tokenHash } });
       return { valid: false, message: 'Password reset link has expired. Please request a new one.' };
     }
 
-    if (email && record.email !== email.trim().toLowerCase()) {
+    if (email && (typeof email !== 'string' || record.email !== email.trim().toLowerCase())) {
       return { valid: false, message: 'Password reset link does not match the requested account.' };
     }
 
@@ -872,68 +860,80 @@ export const authService = {
       throw error;
     }
 
-    if (!password || password.length < 8) {
+    if (typeof password !== 'string' || password.length < 8) {
       const error = new Error('Password must be at least 8 characters long.');
       error.statusCode = 400;
       throw error;
     }
 
     const tokenHash = hashResetToken(token.trim());
-    const record = RESET_TOKENS.get(tokenHash);
+    const record = await prisma.passwordResetToken.findUnique({ where: { tokenHash } });
 
-    if (!record || record.used || Date.now() > record.expiresAt) {
+    if (!record || Date.now() >= record.expiresAt.getTime()) {
       const error = new Error('Password reset token is invalid or has expired.');
       error.statusCode = 400;
       error.code = 'INVALID_OR_EXPIRED_TOKEN';
       throw error;
     }
 
-    if (email && record.email !== email.trim().toLowerCase()) {
+    if (email && (typeof email !== 'string' || record.email !== email.trim().toLowerCase())) {
       const error = new Error('Reset token does not match the provided email.');
       error.statusCode = 400;
       throw error;
     }
 
-    // Invalidate token immediately
-    record.used = true;
-    RESET_TOKENS.delete(tokenHash);
-
-    // Hash new password securely with standard bcrypt
     const newPasswordHash = hashPassword(password);
 
-    // Cache override so new password takes effect immediately across all routes
+    await prisma.$transaction(async (transaction) => {
+      const claimedToken = await transaction.passwordResetToken.deleteMany({
+        where: { tokenHash, expiresAt: { gt: new Date() } },
+      });
+      if (claimedToken.count !== 1) {
+        const error = new Error('Password reset token is invalid or has expired.');
+        error.statusCode = 400;
+        error.code = 'INVALID_OR_EXPIRED_TOKEN';
+        throw error;
+      }
+
+      if (record.userType === 'SUPER_ADMIN') {
+        const updated = await transaction.superAdmin.updateMany({
+          where: { email: record.email },
+          data: { passwordHash: newPasswordHash },
+        });
+        if (updated.count === 0 && record.email === BOOTSTRAP_SUPER_ADMIN.email.toLowerCase()) {
+          await transaction.superAdmin.create({
+            data: {
+              name: BOOTSTRAP_SUPER_ADMIN.name,
+              email: record.email,
+              passwordHash: newPasswordHash,
+              status: 'ACTIVE',
+            },
+          });
+        } else if (updated.count === 0) {
+          throw new Error('The account for this password reset no longer exists.');
+        }
+      } else if (record.userType === 'CLIENT_ADMIN') {
+        const updated = await transaction.clientAdmin.updateMany({
+          where: { email: record.email },
+          data: { passwordHash: newPasswordHash },
+        });
+        if (updated.count === 0) {
+          throw new Error('The account for this password reset no longer exists.');
+        }
+      } else if (record.userType === 'COMPANY_EMPLOYEE') {
+        const updated = await transaction.companyEmployee.updateMany({
+          where: { id: record.userId, email: record.email },
+          data: { passwordHash: newPasswordHash },
+        });
+        if (updated.count === 0) {
+          throw new Error('The account for this password reset no longer exists.');
+        }
+      } else {
+        throw new Error(`Unsupported password reset account type: ${record.userType}`);
+      }
+    });
+
     PASSWORD_OVERRIDES.set(record.email, newPasswordHash);
-
-    // Update database record where applicable
-    if (record.userType === 'SUPER_ADMIN') {
-      try {
-        await prisma.superAdmin.update({
-          where: { email: record.email },
-          data: { passwordHash: newPasswordHash },
-        });
-      } catch (err) {
-        logger.debug('Super Admin database password update deferred:', err.message);
-      }
-    } else if (record.userType === 'CLIENT_ADMIN') {
-      try {
-        await prisma.clientAdmin.update({
-          where: { email: record.email },
-          data: { passwordHash: newPasswordHash },
-        });
-      } catch (err) {
-        logger.debug('Client Admin database password update deferred:', err.message);
-      }
-    } else if (record.userType === 'COMPANY_EMPLOYEE') {
-      try {
-        await prisma.companyEmployee.update({
-          where: { id: String(record.userId) },
-          data: { passwordHash: newPasswordHash },
-        });
-      } catch (err) {
-        logger.debug('Company Employee database password update deferred:', err.message);
-      }
-    }
-
     await auditService.logAudit({
       action: 'PASSWORD_RESET',
       entityType: record.userType,

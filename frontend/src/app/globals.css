@@ -540,3 +540,35 @@ a, button, select, label, input[type="button"], input[type="submit"], [role="but
   color: #94a3b8;
   opacity: 1;
 }
+
+[data-theme="dark"] .password-recovery-page {
+  background: linear-gradient(135deg, #171321 0%, #0c0d14 55%, #171321 100%) !important;
+}
+
+[data-theme="dark"] .password-recovery-card {
+  background: #12131c !important;
+  border: 1px solid #26283b;
+}
+
+[data-theme="dark"] .password-recovery-input,
+[data-theme="dark"] .password-recovery-input:focus {
+  background-color: #181926 !important;
+  border-color: #3a3d55 !important;
+  color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .password-recovery-input::placeholder {
+  color: #94a3b8 !important;
+}
+
+@media (max-width: 480px) {
+  .password-recovery-page {
+    min-height: 100svh !important;
+    padding: 1rem 0.75rem !important;
+  }
+
+  .password-recovery-card {
+    padding: 1.75rem 1.25rem !important;
+    border-radius: 16px !important;
+  }
+}
