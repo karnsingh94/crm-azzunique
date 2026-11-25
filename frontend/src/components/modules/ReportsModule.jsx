@@ -503,7 +503,7 @@ export default function ReportsModule({
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(440px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))',
           gap: '1.5rem',
         }}
       >
@@ -512,14 +512,14 @@ export default function ReportsModule({
           style={{
             background: '#ffffff',
             borderRadius: '16px',
-            padding: '1.75rem',
+            padding: 'clamp(1rem, 2.5vw, 1.75rem)',
             border: '1px solid #e2e8f0',
             boxShadow: '0 4px 16px rgba(0, 0, 0, 0.03)',
             display: 'flex',
             flexDirection: 'column',
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1.25rem' }}>
             <div>
               <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
                 Monthly Revenue Trend
@@ -682,14 +682,14 @@ export default function ReportsModule({
           style={{
             background: '#ffffff',
             borderRadius: '16px',
-            padding: '1.75rem',
+            padding: 'clamp(1rem, 2.5vw, 1.75rem)',
             border: '1px solid #e2e8f0',
             boxShadow: '0 4px 16px rgba(0, 0, 0, 0.03)',
             display: 'flex',
             flexDirection: 'column',
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1.25rem' }}>
             <div>
               <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
                 Lead Pipeline Funnel
@@ -768,7 +768,7 @@ export default function ReportsModule({
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(440px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))',
           gap: '1.5rem',
         }}
       >
@@ -777,12 +777,12 @@ export default function ReportsModule({
           style={{
             background: '#ffffff',
             borderRadius: '16px',
-            padding: '1.75rem',
+            padding: 'clamp(1rem, 2.5vw, 1.75rem)',
             border: '1px solid #e2e8f0',
             boxShadow: '0 4px 16px rgba(0, 0, 0, 0.03)',
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1.25rem' }}>
             <div>
               <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
                 Quotes vs Orders Volume
@@ -869,7 +869,7 @@ export default function ReportsModule({
           style={{
             background: '#ffffff',
             borderRadius: '16px',
-            padding: '1.75rem',
+            padding: 'clamp(1rem, 2.5vw, 1.75rem)',
             border: '1px solid #e2e8f0',
             boxShadow: '0 4px 16px rgba(0, 0, 0, 0.03)',
           }}
@@ -939,7 +939,7 @@ export default function ReportsModule({
           }}
         >
           {/* Tabs */}
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
             {[
               { id: 'orders', label: 'Recent Sales Orders' },
               { id: 'products', label: 'Top Products & Catalogue' },
@@ -967,7 +967,7 @@ export default function ReportsModule({
           </div>
 
           {/* Search Box */}
-          <div style={{ position: 'relative', width: '240px' }}>
+          <div style={{ position: 'relative', width: '100%', maxWidth: '240px' }}>
             <input
               type="text"
               placeholder="Search in report..."

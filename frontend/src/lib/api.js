@@ -5,7 +5,7 @@
 
 import { clearStoredSession, getStoredToken } from './auth';
 
-export const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+export const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://crm.azzunique.in/api';
 
 const inFlightGetRequests = new Map();
 const readResponseCache = new Map();

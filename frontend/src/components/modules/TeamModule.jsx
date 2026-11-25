@@ -158,7 +158,7 @@ export default function TeamModule({ activeCompany, currentUser, showToast, init
         </button>
       </div>
 
-      <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', gap: '0.5rem' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', borderBottom: '1px solid #e2e8f0', gap: '0.5rem' }}>
         {[
           ['members', `Company Employees (${employees.length})`],
           ['teams', 'Department Head Workspace'],

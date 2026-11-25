@@ -826,7 +826,7 @@ export default function ServiceDepartments({
       {/* ==================== DEPARTMENT HEADER ==================== */}
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', paddingBottom: '0.5rem', borderBottom: '1px solid #e2e8f0' }}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '1.35rem' }}>🏢</span>
             <h2 style={{ margin: 0, color: '#0f172a', fontSize: '1.35rem', fontWeight: 800 }}>
               {departmentName} Department
@@ -1123,7 +1123,7 @@ export default function ServiceDepartments({
 
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))',
                 gap: '0.75rem',
               }}>
                 {DEPT_HEAD_PERMISSION_CONFIG.map(({ key, title, desc, icon }) => {
@@ -1173,7 +1173,7 @@ export default function ServiceDepartments({
             </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.25rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
             <button
               type="button"
               onClick={() => {
@@ -1510,7 +1510,7 @@ export default function ServiceDepartments({
               )}
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.25rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
               <button
                 type="button"
                 onClick={() => {
@@ -1546,7 +1546,7 @@ export default function ServiceDepartments({
         {teams.length > 0 ? (
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 260px), 1fr))',
             gap: '1rem',
           }}>
             {teams.map((team) => {
@@ -1658,6 +1658,8 @@ export default function ServiceDepartments({
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: '0.5rem',
                     paddingTop: '0.65rem',
                     borderTop: isSelected ? '1px solid #ebdfff' : '1px solid #f1f5f9',
                   }}>
@@ -1781,7 +1783,7 @@ export default function ServiceDepartments({
               gap: '0.85rem',
             }}>
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
                   <h4 style={{ margin: 0, color: '#0f172a', fontSize: '1.15rem', fontWeight: 800 }}>
                     {selectedTeam.name} Workspace
                   </h4>
@@ -1797,7 +1799,7 @@ export default function ServiceDepartments({
                     {selectedTeam.status === 'ACTIVE' || !selectedTeam.status ? '🟢 Active Team' : '🔴 Inactive Team'}
                   </span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.35rem', fontSize: '0.83rem', color: '#475569' }}>
+                <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginTop: '0.35rem', fontSize: '0.83rem', color: '#475569' }}>
                   <span>
                     👑 <strong>Team Leader:</strong>{' '}
                     {selectedTeam.head ? (
@@ -2116,6 +2118,7 @@ export default function ServiceDepartments({
             {/* Workspace Navigation Tabs */}
             <div style={{
               display: 'flex',
+              flexWrap: 'wrap',
               gap: '0.5rem',
               padding: '0.65rem 1.35rem 0',
               borderBottom: '1px solid #e2e8f0',
@@ -2504,6 +2507,7 @@ export default function ServiceDepartments({
             <div style={{
               display: 'flex',
               justifyContent: 'flex-end',
+              flexWrap: 'wrap',
               gap: '0.75rem',
               padding: '1rem 1.5rem',
               borderTop: '1px solid #e2e8f0',

@@ -4,18 +4,7 @@ export default function ToastContainer({ toasts, onRemove }) {
   if (!toasts || toasts.length === 0) return null;
 
   return (
-    <div style={{
-      position: 'fixed',
-      top: '20px',
-      right: '24px',
-      zIndex: 99999,
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '10px',
-      maxWidth: '420px',
-      width: '100%',
-      pointerEvents: 'none',
-    }}>
+    <div className="resp-toast-container">
       {toasts.map((t) => {
         const isSuccess = t.type === 'success';
         const isDanger = t.type === 'danger';

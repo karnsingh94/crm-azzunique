@@ -286,7 +286,7 @@ export default function SalesBillModal({
           }}
         >
           {/* Header */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid #7f22fe', paddingBottom: '1.25rem', marginBottom: '1.5rem', gap: '1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', borderBottom: '2px solid #7f22fe', paddingBottom: '1.25rem', marginBottom: '1.5rem', gap: '1rem' }}>
             <div>
               <div style={{ fontSize: '1.45rem', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.5px' }}>
                 {activeCompany?.organizationName || activeCompany?.name || 'AZZUNIQUE CRM & ERP'}
@@ -318,7 +318,7 @@ export default function SalesBillModal({
           </div>
 
           {/* Customer / Billing Info */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #f1f5f9', marginBottom: '1.5rem', fontSize: '0.82rem' }}>
+          <div className="resp-grid-2" style={{ gap: '1.25rem', background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #f1f5f9', marginBottom: '1.5rem', fontSize: '0.82rem' }}>
             <div>
               <div style={{ fontWeight: 800, color: '#475569', textTransform: 'uppercase', fontSize: '0.72rem', letterSpacing: '0.5px', marginBottom: '0.35rem' }}>
                 BILLED TO:
@@ -362,7 +362,8 @@ export default function SalesBillModal({
           </div>
 
           {/* Line Items Table */}
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.82rem', marginBottom: '1.5rem' }}>
+          <div className="resp-table-scroll" style={{ marginBottom: '1.5rem' }}>
+          <table style={{ width: '100%', minWidth: '580px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.82rem' }}>
             <thead>
               <tr style={{ background: '#f1f5f9', borderTop: '1px solid #cbd5e1', borderBottom: '1px solid #cbd5e1', color: '#334155', fontWeight: 800 }}>
                 <th style={{ padding: '0.65rem 0.75rem', width: '35px' }}>#</th>
@@ -409,9 +410,10 @@ export default function SalesBillModal({
               )}
             </tbody>
           </table>
+          </div>
 
           {/* Totals & Payment Summary */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '1.5rem', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
+          <div className="resp-grid-split-bill" style={{ gap: '1.25rem', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
             <div style={{ fontSize: '0.82rem' }}>
               <div style={{ padding: '0.75rem', background: '#f8fafc', borderRadius: '6px', border: '1px solid #f1f5f9' }}>
                 <div style={{ fontWeight: 700, color: '#475569', marginBottom: '0.2rem' }}>
@@ -472,7 +474,7 @@ export default function SalesBillModal({
           </div>
 
           {/* Footer & Signatory */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', paddingTop: '1.5rem', borderTop: '1px solid #e2e8f0', fontSize: '0.78rem', color: '#64748b' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '1rem', paddingTop: '1.5rem', borderTop: '1px solid #e2e8f0', fontSize: '0.78rem', color: '#64748b' }}>
             <div>
               <div style={{ fontWeight: 700, color: '#334155', marginBottom: '0.2rem' }}>Terms &amp; Conditions:</div>
               <div>1. Payment due within specified credit period.</div>

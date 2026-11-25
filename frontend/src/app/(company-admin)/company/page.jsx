@@ -38,24 +38,24 @@ export default function CompanyProfilePage() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.25rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '1.25rem' }}>
         <Card title="Organization Details" subtitle="Primary company registration data">
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', fontSize: '0.88rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.4rem' }}>
               <span style={{ color: '#64748b' }}>Organization Name:</span>
               <strong style={{ color: '#1e293b' }}>{activeCompany?.name || 'N/A'}</strong>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.4rem' }}>
               <span style={{ color: '#64748b' }}>Admin Contact Email:</span>
               <strong style={{ color: '#1e293b' }}>{activeCompany?.email || currentUser?.email || 'N/A'}</strong>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.4rem' }}>
               <span style={{ color: '#64748b' }}>Account Status:</span>
               <Badge variant={activeCompany?.status === 'ACTIVE' ? 'success' : 'warning'}>
                 {activeCompany?.status || 'ACTIVE'}
               </Badge>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.4rem' }}>
               <span style={{ color: '#64748b' }}>Theme Accent:</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 <span

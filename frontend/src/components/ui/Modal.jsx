@@ -21,46 +21,19 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth = '64
 
   return (
     <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 9999,
-        background: 'rgba(15, 23, 42, 0.6)',
-        backdropFilter: 'blur(4px)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '1.25rem',
-      }}
+      className="resp-modal-backdrop"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
+        className="resp-modal-card"
         style={{
-          background: '#ffffff',
-          color: '#0f172a',
-          borderRadius: '16px',
-          width: '100%',
           maxWidth,
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-          overflow: 'hidden',
-          display: 'flex',
-          flexDirection: 'column',
-          maxHeight: '90vh',
-          animation: 'modalSlideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
         }}
       >
-        <div
-          style={{
-            padding: '1.25rem 1.75rem',
-            borderBottom: '1px solid #e2e8f0',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
-        >
-          <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f172a' }}>{title}</h3>
+        <div className="resp-modal-header">
+          <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f172a', margin: 0, minWidth: 0, overflowWrap: 'anywhere' }}>{title}</h3>
           <button
             type="button"
             onClick={onClose}
@@ -70,6 +43,7 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth = '64
               lineHeight: 1,
               padding: '0.25rem',
               borderRadius: '6px',
+              flexShrink: 0,
               transition: 'color 0.15s',
             }}
             aria-label="Close modal"
@@ -77,7 +51,7 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth = '64
             &times;
           </button>
         </div>
-        <div style={{ padding: '1.75rem', overflowY: 'auto' }}>
+        <div className="resp-modal-body">
           {children}
         </div>
       </div>

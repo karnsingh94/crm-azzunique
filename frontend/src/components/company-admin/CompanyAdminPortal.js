@@ -125,6 +125,7 @@ function CompanyAdminPortalInner({ initialTab, initialSubTab, children }) {
   const [isMounted, setIsMounted] = useState(false);
   const [activeTab, setActiveTab] = useState(() => initialTab || resolveTabFromPathname(pathname));
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [toasts, setToasts] = useState([]);
   const [isSuperAdminSwitched, setIsSuperAdminSwitched] = useState(false);
@@ -206,12 +207,21 @@ function CompanyAdminPortalInner({ initialTab, initialSubTab, children }) {
 
   // Keep activeTab synchronized when pathname changes (browser back/forward, direct link)
   useEffect(() => {
+    setIsMobileSidebarOpen(false);
     if (initialTab) {
       setActiveTab(initialTab);
     } else if (pathname) {
       setActiveTab(resolveTabFromPathname(pathname));
     }
   }, [pathname, initialTab]);
+
+  const handleToggleSidebar = () => {
+    if (typeof window !== 'undefined' && window.innerWidth <= 960) {
+      setIsMobileSidebarOpen(prev => !prev);
+      return;
+    }
+    setIsSidebarCollapsed(prev => !prev);
+  };
 
   // Team Leaders manage only their own team workspace. Department Head
   // management belongs to the Company Admin / Department Head hierarchy.
@@ -672,7 +682,7 @@ function CompanyAdminPortalInner({ initialTab, initialSubTab, children }) {
 
   return (
     <div
-      className={styles.appContainer}
+      className={styles.portalShell}
       data-theme={resolvedTheme}
       style={{
         '--primary': workspaceAccent,
@@ -682,50 +692,30 @@ function CompanyAdminPortalInner({ initialTab, initialSubTab, children }) {
         '--sidebar-active-bg': workspaceAccent,
         '--sidebar-active-border': workspaceAccent,
         '--sidebar-active-parent': `${workspaceAccent}20`,
-        paddingTop: isSuperAdminSwitched ? '44px' : 0,
       }}
     >
       {/* Super Admin Switch Mode Notice Bar */}
       {isSuperAdminSwitched && (
         <div
+          className={styles.superAdminBanner}
           style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            height: '44px',
-            background: 'linear-gradient(90deg, #09090b 0%, #18181b 100%)',
             borderBottom: `2px solid ${companyAccent}`,
-            color: '#f4f4f5',
-            padding: '0 1.5rem',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            fontSize: '0.84rem',
-            fontWeight: 600,
-            zIndex: 999999,
-            boxShadow: '0 4px 14px rgba(0, 0, 0, 0.45)',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <span style={{ fontSize: '1.15rem' }}>🛡️</span>
-            <span>
-              <strong>Super Admin Mode:</strong> Managing real live workspace for{' '}
+          <div className={styles.superAdminBannerLeft}>
+            <span style={{ fontSize: '1.05rem', flexShrink: 0 }}>🛡️</span>
+            <span className={styles.superAdminBannerText}>
+              <strong>Super Admin Mode:</strong> Managing live workspace for{' '}
               <strong style={{ color: companyAccent }}>
                 {activeCompany?.organizationName || currentUser?.organizationName || 'Client'}
               </strong>
             </span>
             <span
+              className={styles.superAdminBannerBadge}
               style={{
-                fontSize: '0.7rem',
                 background: `${companyAccent}29`,
                 color: companyAccent,
                 border: `1px solid ${companyAccent}`,
-                padding: '2px 8px',
-                borderRadius: '12px',
-                fontWeight: 700,
-                textTransform: 'uppercase',
-                letterSpacing: '0.04em',
               }}
             >
               Real Live Panel
@@ -735,74 +725,81 @@ function CompanyAdminPortalInner({ initialTab, initialSubTab, children }) {
           <button
             type="button"
             onClick={handleReturnToSuperAdmin}
+            className={styles.superAdminReturnBtn}
             style={{
               background: companyAccent,
-              color: '#ffffff',
-              border: 'none',
-              padding: '0.38rem 1rem',
-              borderRadius: '7px',
-              fontSize: '0.8rem',
-              fontWeight: 700,
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.45rem',
               boxShadow: `0 2px 8px ${companyAccent}55`,
-              transition: 'all 0.15s ease',
             }}
           >
-            ← Return to Super Admin Portal
+            ← Return to Super Admin
           </button>
         </div>
       )}
 
-      {/* Toast Notification Container */}
-      <ToastContainer toasts={toasts} onRemove={removeToast} />
+      <div
+        className={`${styles.appContainer} ${isSuperAdminSwitched ? styles.appContainerWithBanner : ''}`}
+        data-theme={resolvedTheme}
+      >
+        {/* Toast Notification Container */}
+        <ToastContainer toasts={toasts} onRemove={removeToast} />
 
-      {/* Collapsible Left Navigation Sidebar */}
-      <Sidebar
-        activeTab={activeTab}
-        activeCompany={workspaceCompany}
-        currentUser={currentUser}
-        permittedServices={permittedServices}
-        hasSubModuleAccess={hasSubModuleAccess}
-        hasModuleAccess={hasModuleAccess}
-        isCompanyAdmin={currentUser?.role === 'COMPANY_ADMIN' || isSuperAdminSwitched}
-        canManageServiceTeams={
-          currentUser?.role === 'COMPANY_ADMIN' ||
-          isSuperAdminSwitched
-        }
-        isCollapsed={isSidebarCollapsed}
-        onToggleCollapse={() => setIsSidebarCollapsed(prev => !prev)}
-      />
+        {/* Mobile Drawer Backdrop */}
+        {isMobileSidebarOpen && (
+          <button
+            type="button"
+            aria-label="Close navigation menu"
+            className={styles.mobileSidebarBackdrop}
+            onClick={() => setIsMobileSidebarOpen(false)}
+          />
+        )}
 
-      {/* Main Workspace Area */}
-      <div className={styles.mainContent}>
-        {/* Top Header Navbar */}
-        <Topbar
+        {/* Collapsible Left Navigation Sidebar */}
+        <Sidebar
           activeTab={activeTab}
           activeCompany={workspaceCompany}
-          allCompanies={allCompanies}
-          hasMultipleCompanies={hasMultipleCompanies}
           currentUser={currentUser}
-          onSelectCompany={selectCompany}
-          accentColor={workspaceAccent}
-          onSelectTab={handleNavigate}
-          onToggleSidebar={() => setIsSidebarCollapsed(prev => !prev)}
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          onLogout={handleLogout}
+          permittedServices={permittedServices}
+          hasSubModuleAccess={hasSubModuleAccess}
+          hasModuleAccess={hasModuleAccess}
+          isCompanyAdmin={currentUser?.role === 'COMPANY_ADMIN' || isSuperAdminSwitched}
+          canManageServiceTeams={
+            currentUser?.role === 'COMPANY_ADMIN' ||
+            isSuperAdminSwitched
+          }
+          isCollapsed={isSidebarCollapsed}
+          isMobileOpen={isMobileSidebarOpen}
+          onCloseMobile={() => setIsMobileSidebarOpen(false)}
+          onToggleCollapse={handleToggleSidebar}
         />
 
-        {/* Content Body */}
-        <main className={styles.contentArea}>
-          {effectiveCompany && (
-            <div style={{ marginBottom: '1.35rem' }}>
-              <CompanyAdminBreadcrumbs activeCompany={effectiveCompany} />
-            </div>
-          )}
-          {children || renderContent()}
-        </main>
+        {/* Main Workspace Area */}
+        <div className={styles.mainContent}>
+          {/* Top Header Navbar */}
+          <Topbar
+            activeTab={activeTab}
+            activeCompany={workspaceCompany}
+            allCompanies={allCompanies}
+            hasMultipleCompanies={hasMultipleCompanies}
+            currentUser={currentUser}
+            onSelectCompany={selectCompany}
+            accentColor={workspaceAccent}
+            onSelectTab={handleNavigate}
+            onToggleSidebar={handleToggleSidebar}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            onLogout={handleLogout}
+          />
+
+          {/* Content Body */}
+          <main className={styles.contentArea}>
+            {effectiveCompany && (
+              <div style={{ marginBottom: '1.35rem' }}>
+                <CompanyAdminBreadcrumbs activeCompany={effectiveCompany} />
+              </div>
+            )}
+            {children || renderContent()}
+          </main>
+        </div>
       </div>
     </div>
   );

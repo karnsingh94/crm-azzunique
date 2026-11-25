@@ -22,6 +22,41 @@
   flex-shrink: 0;
   z-index: 50;
   box-shadow: 4px 0 24px rgba(0, 0, 0, 0.15);
+  transition: transform 0.25s ease, width 0.2s ease;
+}
+
+.mobileBackdrop {
+  display: none;
+}
+
+.menuToggleBtn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #334155;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.sidebarCloseBtn {
+  display: none;
+  margin-left: auto;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid #27272a;
+  background: #27272a;
+  color: #e4e4e7;
+  cursor: pointer;
+  font-size: 1rem;
+  flex-shrink: 0;
 }
 
 .sidebarBrand {
@@ -439,7 +474,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-  min-width: 280px;
+  min-width: min(100%, 260px);
   flex: 1;
 }
 
@@ -727,8 +762,8 @@
 /* ======================================================== */
 .servicesGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-  gap: 1.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 310px), 1fr));
+  gap: 1.5rem;
 }
 
 .serviceCard {
@@ -859,6 +894,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
   border-bottom: 1px solid #e2e8f0;
   background: #ffffff;
 }
@@ -1839,23 +1876,73 @@
 
 /* Responsive adjustments */
 @media (max-width: 992px) {
+  .menuToggleBtn {
+    display: inline-flex;
+  }
+
+  .sidebarCloseBtn {
+    display: inline-flex;
+  }
+
+  .mobileBackdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.55);
+    backdrop-filter: blur(2px);
+    z-index: 990;
+  }
+
   .sidebar {
-    width: 80px;
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    height: 100dvh;
+    width: min(280px, 84vw);
+    z-index: 1000;
+    transform: translateX(-100%);
+    box-shadow: none;
   }
-  .brandInfo, .navItem span, .navBadge, .userName, .userRole, .navSectionTitle {
-    display: none;
+
+  .sidebar.sidebarMobileOpen {
+    transform: translateX(0);
+    box-shadow: 12px 0 36px rgba(0, 0, 0, 0.35);
   }
-  .navItem {
-    justify-content: center;
-  }
+
   .topbar {
-    padding: 0 1rem;
+    padding: 0.75rem 1rem;
+    min-height: 60px;
+    height: auto;
+    flex-wrap: wrap;
+    gap: 0.65rem;
   }
+
   .contentArea {
-    padding: 1.5rem;
+    padding: 1.15rem;
   }
+
   .formGrid {
     grid-template-columns: 1fr;
+  }
+
+  .simulatorBody {
+    flex-direction: column;
+  }
+
+  .clientSidebar {
+    width: 100%;
+    max-height: 220px;
+    border-right: none;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .livePreviewContent {
+    flex-direction: column;
+  }
+
+  .livePreviewSidebar {
+    width: 100%;
   }
 }
 
@@ -2902,4 +2989,108 @@
 
 .appLayout[data-theme="dark"] .securityBadgeSubtitle {
   color: #94a3b8;
+}
+
+
+/* Additional global & mobile layout hardening */
+.appLayout {
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+.appLayout > * {
+  min-width: 0;
+}
+
+.searchBox {
+  width: 100%;
+  min-width: 0;
+}
+
+@media (max-width: 992px) {
+  .topbarLeft {
+    max-width: 100%;
+    min-width: 0;
+    flex: 1 1 220px;
+  }
+
+  .moduleHeaderBar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .moduleHeaderActions {
+    flex-wrap: wrap;
+    white-space: normal;
+    width: 100%;
+    gap: 0.65rem;
+  }
+
+  .settingsSubNav {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 640px) {
+  .contentArea {
+    padding: 0.85rem;
+  }
+
+  .topbar {
+    padding: 0.65rem 0.85rem;
+  }
+
+  .sectionHeaderTitleGroup {
+    min-width: 0;
+  }
+
+  .tableHeader {
+    padding: 0.9rem 1rem;
+  }
+
+  .toastContainer {
+    top: auto;
+    bottom: 1rem;
+    left: 0.75rem;
+    right: 0.75rem;
+  }
+
+  .toast {
+    min-width: 0;
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .permServiceHeader,
+  .permModuleHeader {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .permModulesList {
+    padding-left: 0.75rem;
+  }
+
+  .modalOverlay {
+    padding: 0.65rem;
+  }
+
+  .modalContent {
+    max-width: 100% !important;
+    max-height: calc(100dvh - 1.3rem);
+    border-radius: 14px;
+  }
+
+  .modalHeader,
+  .modalBody,
+  .modalFooter {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .modalFooter {
+    flex-wrap: wrap;
+  }
 }

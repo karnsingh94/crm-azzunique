@@ -291,7 +291,12 @@ export default function SuperAdminPortal({ initialTab, initialServiceId }) {
   const [dbStatus, setDbStatus] = useState('checking');
   const [searchQuery, setSearchQuery] = useState('');
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const profileRef = useRef(null);
+
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [pathname, activeTab]);
 
   // Super Admin Authenticated Identity State
   const [isMounted, setIsMounted] = useState(false);
@@ -421,7 +426,7 @@ export default function SuperAdminPortal({ initialTab, initialServiceId }) {
   const [clientAccessTree, setClientAccessTree] = useState({ services: [] });
   const [showClientPassword, setShowClientPassword] = useState(false);
 
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://crm.azzunique.in/api';
 
   // Toast Trigger Helper
   const showToast = (title, message, type = 'success') => {
@@ -1572,16 +1577,39 @@ export default function SuperAdminPortal({ initialTab, initialServiceId }) {
       </div>
 
       {/* ==================== SIDEBAR ==================== */}
-      <aside className={styles.sidebar}>
+      {isMobileMenuOpen && (
+        <div
+          className={styles.mobileBackdrop}
+          onClick={() => setIsMobileMenuOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      <aside className={`${styles.sidebar} ${isMobileMenuOpen ? styles.sidebarMobileOpen : ''}`}>
         <div className={styles.sidebarBrand}>
           <div className={styles.brandLogo}>{platformSettings.brandBadge || 'AZ'}</div>
           <div className={styles.brandInfo}>
             <h2>{platformSettings.platformName || 'AZZUNIQUE'}</h2>
             <span>{platformSettings.tagline || 'Super Admin'}</span>
           </div>
+          <button
+            type="button"
+            className={styles.sidebarCloseBtn}
+            onClick={() => setIsMobileMenuOpen(false)}
+            aria-label="Close navigation menu"
+          >
+            ✕
+          </button>
         </div>
 
-        <nav className={styles.sidebarNav}>
+        <nav
+          className={styles.sidebarNav}
+          onClick={(e) => {
+            if (e.target.closest('a, button')) {
+              setIsMobileMenuOpen(false);
+            }
+          }}
+        >
           <div className={styles.navSectionTitle}>Navigation</div>
           
           <Link
@@ -1660,6 +1688,18 @@ export default function SuperAdminPortal({ initialTab, initialServiceId }) {
         {/* Top Header */}
         <header className={styles.topbar}>
           <div className={styles.topbarLeft}>
+            <button
+              type="button"
+              className={styles.menuToggleBtn}
+              onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+              aria-label="Toggle navigation menu"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <line x1="3" y1="12" x2="21" y2="12" />
+                <line x1="3" y1="18" x2="21" y2="18" />
+              </svg>
+            </button>
             <div className={styles.searchBox}>
               <span className={styles.searchIcon} aria-hidden="true">
                 <IconSearch size={16} />
@@ -2130,9 +2170,9 @@ export default function SuperAdminPortal({ initialTab, initialServiceId }) {
                 >
                   &larr; Back to Services Catalog
                 </Link>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.85rem' }}>
                   <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.4rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.4rem' }}>
                       <h3 className={styles.detailTitle}>{selectedService.name}</h3>
                       <span className={styles.serviceCode}>{selectedService.code}</span>
                       
@@ -3664,6 +3704,7 @@ export default function SuperAdminPortal({ initialTab, initialServiceId }) {
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
+                  flexWrap: 'wrap',
                   background: '#f1f5f9',
                   padding: '4px',
                   borderRadius: '12px',
@@ -3973,7 +4014,7 @@ export default function SuperAdminPortal({ initialTab, initialServiceId }) {
 
                     {/* Section 1.1: Assigned Theme Color / Primary Brand Accent */}
                     <div className={styles.clientThemePanel} style={{ marginTop: '1.25rem', padding: '1.15rem', borderRadius: '12px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.65rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.65rem', marginBottom: '0.65rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                           <span style={{ fontSize: '1.1rem' }}>🎨</span>
                           <div>
@@ -4550,7 +4591,7 @@ export default function SuperAdminPortal({ initialTab, initialServiceId }) {
                       </div>
 
                       {/* Channel Cards Grid */}
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1rem' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '1rem' }}>
                         {filteredChannels.map(ch => {
                           const isAct = ch.isActive;
                           return (

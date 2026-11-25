@@ -16,7 +16,7 @@ export default function SalesOrderModal({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Generate New Sales Order" maxWidth="880px">
       <form onSubmit={handleCreateOrder} style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '1rem' }}>
+        <div className="resp-grid-split">
           <div>
             <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '0.35rem', color: '#1e293b' }}>
               Customer Organization *
@@ -46,7 +46,7 @@ export default function SalesOrderModal({
 
         {/* ITEM BUILDER */}
         <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.65rem', marginBottom: '0.85rem' }}>
             <div>
               <label style={{ fontSize: '0.88rem', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 <span>📦</span> Order Line Items &amp; Pricing *
@@ -77,6 +77,8 @@ export default function SalesOrderModal({
             </button>
           </div>
 
+          <div className="resp-table-scroll">
+            <div style={{ minWidth: '640px' }}>
           {/* Column Headers */}
           <div
             style={{
@@ -197,6 +199,8 @@ export default function SalesOrderModal({
                 ) : <span />}
               </div>
             ))}
+            </div>
+            </div>
           </div>
 
           {/* Totals Summary Footer */}
@@ -260,7 +264,7 @@ export default function SalesOrderModal({
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '1rem' }}>
+        <div className="resp-grid-split">
           <div>
             <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '0.35rem', color: '#1e293b' }}>
               Order Notes / Delivery Terms
@@ -288,7 +292,7 @@ export default function SalesOrderModal({
           </div>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', flexWrap: 'wrap', gap: '0.75rem', marginTop: '0.5rem' }}>
           <button
             type="button"
             onClick={onClose}

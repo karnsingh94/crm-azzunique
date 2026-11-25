@@ -3711,7 +3711,7 @@ export default function CrmModule({ activeCompany, showToast, initialSubTab, has
             />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="resp-grid-2">
             <div>
               <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '0.35rem', color: '#334155' }}>
                 Company / Organization
@@ -3740,7 +3740,7 @@ export default function CrmModule({ activeCompany, showToast, initialSubTab, has
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="resp-grid-2">
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
                 <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#334155' }}>
@@ -4215,7 +4215,7 @@ export default function CrmModule({ activeCompany, showToast, initialSubTab, has
             />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="resp-grid-2">
             <div>
               <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '0.35rem', color: '#334155' }}>
                 GSTIN / Tax Registration No
@@ -4243,7 +4243,7 @@ export default function CrmModule({ activeCompany, showToast, initialSubTab, has
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="resp-grid-2">
             <div>
               <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '0.35rem', color: '#334155' }}>
                 Industry / Domain
@@ -4276,7 +4276,7 @@ export default function CrmModule({ activeCompany, showToast, initialSubTab, has
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="resp-grid-2">
             <div>
               <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '0.35rem', color: '#334155' }}>
                 Official Email Address
@@ -4323,7 +4323,7 @@ export default function CrmModule({ activeCompany, showToast, initialSubTab, has
               />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
+            <div className="resp-grid-3" style={{ gap: '0.75rem', marginBottom: '0.75rem' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '0.3rem', color: '#334155' }}>
                   City
@@ -5174,7 +5174,7 @@ export default function CrmModule({ activeCompany, showToast, initialSubTab, has
                       <span style={{ display: 'block', fontSize: '0.82rem', fontWeight: 800, color: '#6b21a8', marginBottom: '0.5rem' }}>
                         📞 Record New Call / Discussion Note:
                       </span>
-                      <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr 140px', gap: '0.5rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
+                      <div className="resp-grid-touchpoint" style={{ marginBottom: '0.5rem' }}>
                         <select
                           value={touchpointForm.type}
                           onChange={(e) => setTouchpointForm({ ...touchpointForm, type: e.target.value })}
@@ -5487,7 +5487,7 @@ export default function CrmModule({ activeCompany, showToast, initialSubTab, has
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="resp-grid-2">
               <div>
                 <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '0.35rem', color: '#334155' }}>
                   Touchpoint Channel *
@@ -5584,7 +5584,7 @@ export default function CrmModule({ activeCompany, showToast, initialSubTab, has
       >
         {editingCustomer && (
           <form onSubmit={handleUpdateCustomer} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="resp-grid-2">
               <div>
                 <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '0.35rem', color: '#334155' }}>
                   Company / Organization Name *
@@ -5611,7 +5611,7 @@ export default function CrmModule({ activeCompany, showToast, initialSubTab, has
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="resp-grid-2">
               <div>
                 <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '0.35rem', color: '#334155' }}>
                   Primary Contact Person
@@ -5637,7 +5637,7 @@ export default function CrmModule({ activeCompany, showToast, initialSubTab, has
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="resp-grid-2">
               <div>
                 <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '0.35rem', color: '#334155' }}>
                   Mobile / Phone Number
@@ -5666,7 +5666,7 @@ export default function CrmModule({ activeCompany, showToast, initialSubTab, has
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="resp-grid-2">
               <div>
                 <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '0.35rem', color: '#334155' }}>
                   Industry Vertical
@@ -5701,7 +5701,7 @@ export default function CrmModule({ activeCompany, showToast, initialSubTab, has
             </div>
 
             {/* Commercial & Tax Identification */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="resp-grid-2">
               <div>
                 <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '0.35rem', color: '#334155' }}>
                   PAN Number
@@ -5761,7 +5761,7 @@ export default function CrmModule({ activeCompany, showToast, initialSubTab, has
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
+              <div className="resp-grid-3" style={{ gap: '0.75rem' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '0.3rem', color: '#334155' }}>
                     City
@@ -5969,7 +5969,7 @@ export default function CrmModule({ activeCompany, showToast, initialSubTab, has
       {/* ------------------------------------------------------------- */}
       <Modal isOpen={showAddContactModal} onClose={() => setShowAddContactModal(false)} title="Register Business Stakeholder / Contact 👤">
         <form onSubmit={handleCreateContact} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="resp-grid-2">
             <div>
               <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '0.35rem', color: '#334155' }}>
                 Contact Person Name *
@@ -6005,7 +6005,7 @@ export default function CrmModule({ activeCompany, showToast, initialSubTab, has
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="resp-grid-2">
             <div>
               <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '0.35rem', color: '#334155' }}>
                 Designation / Stakeholder Role
@@ -6045,7 +6045,7 @@ export default function CrmModule({ activeCompany, showToast, initialSubTab, has
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="resp-grid-2">
             <div>
               <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '0.35rem', color: '#334155' }}>
                 Official Email Address
@@ -6408,7 +6408,7 @@ export default function CrmModule({ activeCompany, showToast, initialSubTab, has
       >
         {editingContact && (
           <form onSubmit={handleUpdateContact} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="resp-grid-2">
               <div>
                 <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '0.35rem', color: '#334155' }}>
                   Contact Person Name *
@@ -6437,7 +6437,7 @@ export default function CrmModule({ activeCompany, showToast, initialSubTab, has
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="resp-grid-2">
               <div>
                 <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '0.35rem', color: '#334155' }}>
                   Designation / Stakeholder Role
@@ -6469,7 +6469,7 @@ export default function CrmModule({ activeCompany, showToast, initialSubTab, has
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="resp-grid-2">
               <div>
                 <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '0.35rem', color: '#334155' }}>
                   Official Email Address
@@ -6543,7 +6543,7 @@ export default function CrmModule({ activeCompany, showToast, initialSubTab, has
             />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="resp-grid-2">
             <div>
               <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '0.35rem' }}>
                 Client / Company *
@@ -6599,7 +6599,7 @@ export default function CrmModule({ activeCompany, showToast, initialSubTab, has
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+          <div className="resp-grid-3">
             <div>
               <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '0.35rem' }}>
                 Estimated Deal Value

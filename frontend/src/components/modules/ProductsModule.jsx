@@ -1829,7 +1829,7 @@ export default function ProductsModule({ activeCompany, showToast, initialSubTab
       {/* Add Product Modal */}
       <Modal isOpen={showAddProductModal} onClose={() => setShowAddProductModal(false)} title="Register New Catalogue SKU">
         <form onSubmit={handleCreateProduct} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="resp-grid-2">
             <div>
               <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '0.35rem' }}>
                 SKU Code *
@@ -2054,7 +2054,7 @@ export default function ProductsModule({ activeCompany, showToast, initialSubTab
               />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="resp-grid-2">
               <div>
                 <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '0.35rem' }}>
                   Category
@@ -2116,7 +2116,7 @@ export default function ProductsModule({ activeCompany, showToast, initialSubTab
               isRemoved={editImageRemoved}
             />
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+            <div className="resp-grid-3">
               <div>
                 <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '0.35rem' }}>
                   UOM
@@ -2260,7 +2260,7 @@ export default function ProductsModule({ activeCompany, showToast, initialSubTab
               )}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', background: '#f8fafc', padding: '1rem', borderRadius: '8px' }}>
+            <div className="resp-grid-2" style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px' }}>
               <div>
                 <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>SKU Code</span>
                 <p style={{ margin: 0, fontWeight: 800, color: '#7f22fe', fontSize: '1.05rem' }}>{productToView.sku}</p>
@@ -2288,7 +2288,7 @@ export default function ProductsModule({ activeCompany, showToast, initialSubTab
               </div>
             )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '1rem', borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
+            <div className="resp-grid-4" style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
               <div>
                 <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Standard Selling Rate</span>
                 <p style={{ margin: 0, fontWeight: 800, color: '#0f172a', fontSize: '1rem' }}>
@@ -2587,7 +2587,7 @@ export default function ProductsModule({ activeCompany, showToast, initialSubTab
             </span>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="resp-grid-2">
             <div>
               <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '0.35rem' }}>
                 Plan / Tier Name *
@@ -2617,7 +2617,7 @@ export default function ProductsModule({ activeCompany, showToast, initialSubTab
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="resp-grid-2">
             <div>
               <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '0.35rem' }}>
                 Selling Rate (₹) *
@@ -2650,7 +2650,7 @@ export default function ProductsModule({ activeCompany, showToast, initialSubTab
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="resp-grid-2">
             <div>
               <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '0.35rem' }}>
                 Applicable Tax / GST (%)
@@ -2727,7 +2727,7 @@ export default function ProductsModule({ activeCompany, showToast, initialSubTab
               </p>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="resp-grid-2">
               <div>
                 <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '0.35rem' }}>
                   Plan Name *
@@ -2756,7 +2756,7 @@ export default function ProductsModule({ activeCompany, showToast, initialSubTab
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="resp-grid-2">
               <div>
                 <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '0.35rem' }}>
                   Selling Rate (₹) *
@@ -2787,7 +2787,7 @@ export default function ProductsModule({ activeCompany, showToast, initialSubTab
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="resp-grid-2">
               <div>
                 <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '0.35rem' }}>
                   Applicable Tax (%)

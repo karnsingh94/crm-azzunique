@@ -22,6 +22,7 @@ import {
 } from '../ui/Icons';
 import { getHierarchyFromPathname } from '@/config/routes.config';
 import { MODULE_ALIASES, SUBMODULE_ALIASES } from '../../hooks/useCompanyAccess';
+import styles from '../company-admin/CompanyAdminPortal.module.css';
 
 // Canonical sub-page definitions mapped strictly to each submodule
 const SUBMODULE_PAGES = {
@@ -259,9 +260,12 @@ export default function Sidebar({
   hasModuleAccess,
   isCompanyAdmin = true,
   canManageServiceTeams = isCompanyAdmin,
-  isCollapsed = false,
+  isCollapsed: desktopCollapsed = false,
+  isMobileOpen = false,
+  onCloseMobile,
   onToggleCollapse,
 }) {
+  const isCollapsed = desktopCollapsed && !isMobileOpen;
   const pathname = usePathname() || '/dashboard';
   const visibleServices = isCompanyAdmin
     ? permittedServices
@@ -416,23 +420,7 @@ export default function Sidebar({
 
   return (
     <aside
-      style={{
-        width: isCollapsed ? '78px' : '280px',
-        flexShrink: 0,
-        backgroundColor: '#18181b',
-        color: '#e4e4e7',
-        minHeight: '100vh',
-        height: '100vh',
-        position: 'sticky',
-        top: 0,
-        display: 'flex',
-        flexDirection: 'column',
-        borderRight: '1px solid #27272a',
-        transition: 'width 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
-        zIndex: 50,
-        overflow: 'hidden',
-        userSelect: 'none',
-      }}
+      className={`${styles.sidebar} ${isCollapsed ? styles.sidebarCollapsed : ''} ${isMobileOpen ? styles.sidebarMobileOpen : ''}`}
     >
       {/* Brand Header */}
       <div
@@ -510,11 +498,27 @@ export default function Sidebar({
             </div>
           </div>
         )}
+
+        {onCloseMobile && (
+          <button
+            type="button"
+            className={styles.sidebarCloseBtn}
+            onClick={onCloseMobile}
+            aria-label="Close navigation menu"
+          >
+            &times;
+          </button>
+        )}
       </div>
 
       {/* Navigation Area */}
       <nav
         className="custom-scrollbar"
+        onClick={(e) => {
+          if (e.target.closest('a')) {
+            onCloseMobile?.();
+          }
+        }}
         style={{
           flex: 1,
           overflowY: 'auto',

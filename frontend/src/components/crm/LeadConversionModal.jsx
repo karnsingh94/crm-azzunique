@@ -55,7 +55,7 @@ export default function LeadConversionModal({
         </div>
 
         {/* Mode Selector */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+        <div className="resp-grid-2" style={{ gap: '0.75rem' }}>
           <button
             type="button"
             onClick={() => {
@@ -170,7 +170,7 @@ export default function LeadConversionModal({
               />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="resp-grid-2">
               <div>
                 <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '0.35rem', color: '#334155' }}>
                   Primary Contact Person
@@ -198,7 +198,7 @@ export default function LeadConversionModal({
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="resp-grid-2">
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
                   <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#334155' }}>

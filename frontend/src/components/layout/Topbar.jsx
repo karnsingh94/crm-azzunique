@@ -153,25 +153,9 @@ export default function Topbar({
   };
 
   return (
-    <header
-      className={styles.topbar}
-      style={{
-        height: '64px',
-        backgroundColor: '#ffffff',
-        borderBottom: '1px solid #e2e8f0',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '0 1.75rem',
-        position: 'sticky',
-        top: 0,
-        zIndex: 40,
-        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.04)',
-        gap: '1.25rem',
-      }}
-    >
+    <header className={styles.topbar}>
       {/* Left: Sidebar Toggle & Global Search Bar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', flex: 1, maxWidth: '520px' }}>
+      <div className={styles.topbarLeft}>
         <button
           type="button"
           className={styles.topbarIconButton}
@@ -194,15 +178,7 @@ export default function Topbar({
         </button>
 
         {/* Global Search Bar */}
-        <div
-          className={styles.companyDropdown}
-          style={{
-            position: 'relative',
-            display: 'flex',
-            alignItems: 'center',
-            width: '100%',
-          }}
-        >
+        <div className={styles.topbarSearchWrap}>
           <span
             style={{
               position: 'absolute',
@@ -246,7 +222,7 @@ export default function Topbar({
       </div>
 
       {/* Right: Notifications + Company Badge + Profile Trigger */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', flexShrink: 0 }}>
+      <div className={styles.topbarRight}>
         {/* Universal Topbar Notification Center */}
         <div style={{ position: 'relative' }} ref={notificationRef}>
           <button
@@ -299,11 +275,11 @@ export default function Topbar({
           {/* Notifications Popover Dropdown */}
           {showNotifications && (
             <div
+              className={`${styles.topbarPopover} ${styles.topbarNotificationsPopover}`}
               style={{
                 position: 'absolute',
                 top: 'calc(100% + 8px)',
                 right: 0,
-                width: '340px',
                 maxHeight: '440px',
                 background: '#ffffff',
                 border: '1px solid #e2e8f0',
@@ -457,7 +433,7 @@ export default function Topbar({
 
             {showCompanyMenu && (
               <div
-                className={styles.companyDropdownHeading}
+                className={`${styles.companyDropdown} ${styles.companyDropdownHeading} ${styles.topbarPopover}`}
                 style={{
                   position: 'absolute',
                   top: 'calc(100% + 6px)',
@@ -580,7 +556,7 @@ export default function Topbar({
             >
               {userInitials}
             </div>
-            <div style={{ textAlign: 'left', display: 'flex', flexDirection: 'column' }}>
+            <div className={styles.profileMetaWrap}>
               <span className={styles.profileName} style={{ fontSize: '0.82rem', fontWeight: 700, color: '#0f172a', lineHeight: 1.2 }}>
                 {displayName}
               </span>
@@ -593,7 +569,7 @@ export default function Topbar({
 
           {showProfileMenu && (
             <div
-              className={styles.profileDropdown}
+              className={`${styles.profileDropdown} ${styles.topbarPopover}`}
               style={{
                 position: 'absolute',
                 top: 'calc(100% + 8px)',

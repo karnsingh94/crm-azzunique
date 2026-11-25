@@ -7,6 +7,7 @@ import auditService from './audit.service.js';
 import logger from '../utils/logger.js';
 import { sendPasswordResetEmail } from '../utils/mailer.js';
 import { normalizeTeamPermissions } from '../utils/team-permissions.js';
+import env from '../config/env.js';
 
 // In-memory password override cache to immediately support resets for both DB & bootstrap fallback accounts
 const PASSWORD_OVERRIDES = new Map();
@@ -268,7 +269,7 @@ export const authService = {
           expiresInSeconds,
           user: userObj,
           redirectUrl: '/',
-          targetOrigin: 'http://localhost:3000',
+          targetOrigin: env.clientUrl,
         };
       }
     } else if (superAdmin) {
@@ -304,7 +305,7 @@ export const authService = {
           expiresInSeconds,
           user: userObj,
           redirectUrl: '/',
-          targetOrigin: 'http://localhost:3000',
+          targetOrigin: env.clientUrl,
         };
       }
     } else if (cleanEmail === BOOTSTRAP_SUPER_ADMIN.email.toLowerCase() && password === BOOTSTRAP_SUPER_ADMIN.password) {
@@ -326,7 +327,7 @@ export const authService = {
         expiresInSeconds,
         user: userObj,
         redirectUrl: '/',
-        targetOrigin: 'http://localhost:3000',
+        targetOrigin: env.clientUrl,
       };
     }
 
@@ -396,7 +397,7 @@ export const authService = {
           token,
           user: userObj,
           redirectUrl: '/dashboard',
-          targetOrigin: process.env.CLIENT_URL || 'http://localhost:3000',
+          targetOrigin: env.clientUrl,
         };
       }
     }
@@ -517,7 +518,7 @@ export const authService = {
           token,
           user: userObj,
           redirectUrl,
-          targetOrigin: process.env.CLIENT_URL || 'http://localhost:3000',
+          targetOrigin: env.clientUrl,
         };
       }
     }
@@ -563,7 +564,7 @@ export const authService = {
         token,
         user: userObj,
         redirectUrl: userObj.role === 'EMPLOYEE' ? '/employee/dashboard' : '/dashboard',
-        targetOrigin: process.env.CLIENT_URL || 'http://localhost:3000',
+        targetOrigin: env.clientUrl,
       };
     }
 
@@ -776,7 +777,7 @@ export const authService = {
     const rawToken = crypto.randomBytes(32).toString('hex');
     const tokenHash = hashResetToken(rawToken);
     const ttlMs = 15 * 60 * 1000; // 15 minutes TTL
-    const resetUrl = new URL('/reset-password', process.env.CLIENT_URL || 'http://localhost:3000');
+    const resetUrl = new URL('/reset-password', env.clientUrl);
     resetUrl.searchParams.set('token', rawToken);
     resetUrl.searchParams.set('email', cleanEmail);
 

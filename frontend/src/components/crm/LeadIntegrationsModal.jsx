@@ -188,7 +188,7 @@ export default function LeadIntegrationsModal({ companyId, isOpen, onClose, show
                       const isWebsite = provider.id === 'WEBSITE_WEBHOOK';
                       return (
                         <div key={provider.id} style={{
-                          display: 'flex', alignItems: 'center', gap: '1rem',
+                          display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '1rem',
                           padding: '0.9rem 1.1rem',
                           border: '1.5px solid #a7f3d0', borderRadius: '12px',
                           background: '#f0fdf4', boxShadow: '0 2px 8px rgba(16,185,129,0.07)',
@@ -202,7 +202,7 @@ export default function LeadIntegrationsModal({ companyId, isOpen, onClose, show
                               </span>
                             </div>
                             <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: '0.15rem' }}>{provider.category}</div>
-                            <div style={{ marginTop: '0.4rem', fontSize: '0.75rem', color: '#166534', background: '#dcfce7', borderRadius: '6px', padding: '3px 8px', display: 'inline-flex', gap: '1rem' }}>
+                            <div style={{ marginTop: '0.4rem', fontSize: '0.75rem', color: '#166534', background: '#dcfce7', borderRadius: '6px', padding: '3px 8px', display: 'inline-flex', flexWrap: 'wrap', gap: '0.4rem 1rem' }}>
                               <span>📊 Leads Synced: <strong>{provider.totalSynced || 0}</strong></span>
                               {provider.lastSyncAt && (
                                 <span>🕒 Last: <strong>{new Date(provider.lastSyncAt).toLocaleDateString('en-IN')}</strong></span>
@@ -254,7 +254,7 @@ export default function LeadIntegrationsModal({ companyId, isOpen, onClose, show
                   <div style={{ border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden' }}>
                     {inactiveIntegrations.map((provider, idx) => (
                       <div key={provider.id} style={{
-                        display: 'flex', alignItems: 'center', gap: '0.85rem',
+                        display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.85rem',
                         padding: '0.75rem 1rem',
                         borderBottom: idx < inactiveIntegrations.length - 1 ? '1px solid #f1f5f9' : 'none',
                         background: '#fafafa',
@@ -285,7 +285,7 @@ export default function LeadIntegrationsModal({ companyId, isOpen, onClose, show
         <div style={{
           padding: '0.75rem 1.5rem',
           background: '#f8fafc', borderTop: '1px solid #e2e8f0',
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.65rem',
         }}>
           <span style={{ fontSize: '0.74rem', color: '#64748b' }}>
             External leads appear in <strong>Leads Pipeline</strong> tagged by their channel source.

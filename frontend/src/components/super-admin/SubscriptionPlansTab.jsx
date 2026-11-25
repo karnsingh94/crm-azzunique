@@ -378,7 +378,7 @@ export default function SubscriptionPlansTab({ showToast, onCompanyUpdated }) {
         paddingBottom: '0.5rem',
       }}>
         {/* Toggle Plans Grid vs Company Subscriptions List */}
-        <div style={{ display: 'flex', gap: '0.4rem', background: '#f1f5f9', padding: '3px', borderRadius: '9px' }}>
+        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', background: '#f1f5f9', padding: '3px', borderRadius: '9px' }}>
           <button
             type="button"
             onClick={() => setActiveView('plans')}
@@ -417,7 +417,7 @@ export default function SubscriptionPlansTab({ showToast, onCompanyUpdated }) {
 
         {/* Billing Cycle Filter (shown when viewing plans) */}
         {activeView === 'plans' && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600 }}>Billing Cycle:</span>
             {['ALL', 'MONTHLY', 'HALF_YEARLY', 'ANNUAL'].map((cycle) => (
               <button
@@ -457,7 +457,7 @@ export default function SubscriptionPlansTab({ showToast, onCompanyUpdated }) {
               <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>Click &quot;Create New Plan&quot; to define a subscription tier.</p>
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(310px, 1fr))', gap: '1.25rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 290px), 1fr))', gap: '1.25rem' }}>
               {filteredPlans.map((plan) => {
                 const badge = cycleBadgeStyle(plan.billingCycle);
                 const priceFormatted = parseFloat(plan.price || 0).toLocaleString('en-IN');
@@ -699,7 +699,7 @@ export default function SubscriptionPlansTab({ showToast, onCompanyUpdated }) {
       {/* ── 2. TENANT COMPANIES ASSIGNMENT TABLE VIEW ── */}
       {activeView === 'companies' && (
         <div style={{ background: '#ffffff', borderRadius: '14px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
-          <div style={{ padding: '0.9rem 1.25rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ padding: '0.9rem 1.25rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.65rem' }}>
             <span style={{ fontSize: '0.86rem', fontWeight: 800, color: '#0f172a' }}>
               Tenant Client Panels &amp; Assigned Subscriptions ({companySubs.length})
             </span>
@@ -890,7 +890,7 @@ export default function SubscriptionPlansTab({ showToast, onCompanyUpdated }) {
             <form onSubmit={handleSavePlan} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto' }}>
               <div style={{ padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {/* Name & Billing Cycle */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '1rem' }}>
+                <div className="resp-grid-split" style={{ gap: '1rem' }}>
                   <div>
                     <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, marginBottom: '0.3rem' }}>
                       Plan Name *
@@ -921,7 +921,7 @@ export default function SubscriptionPlansTab({ showToast, onCompanyUpdated }) {
                 </div>
 
                 {/* Price & Currency */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="resp-grid-2">
                   <div>
                     <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, marginBottom: '0.3rem' }}>
                       Price (₹ INR) *
@@ -1206,7 +1206,7 @@ export default function SubscriptionPlansTab({ showToast, onCompanyUpdated }) {
                 </select>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem' }}>
+              <div className="resp-grid-2" style={{ gap: '0.85rem' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, marginBottom: '0.3rem' }}>
                     Start Date

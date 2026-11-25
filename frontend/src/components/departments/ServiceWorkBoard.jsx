@@ -206,7 +206,7 @@ export default function ServiceWorkBoard({
                   </strong>
                 </div>
                 {canShowUpdate(item) && (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'minmax(130px, 180px) minmax(90px, 120px) minmax(150px, 1fr) auto', alignItems: 'end', gap: '0.6rem', marginTop: '0.8rem' }}>
+                  <div className="resp-grid-work-update" style={{ marginTop: '0.8rem' }}>
                     <label style={{ color: '#475569', fontSize: '0.76rem', fontWeight: 700 }}>
                       Status
                       <select value={draftUpdate.status ?? item.status} onChange={(event) => setUpdates({ ...updates, [item.id]: { ...draftUpdate, status: event.target.value } })} style={{ ...fieldStyle, display: 'block', marginTop: '0.25rem' }}>

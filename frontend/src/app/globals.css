@@ -104,6 +104,8 @@
 
 html, body {
   min-height: 100vh;
+  max-width: 100%;
+  overflow-x: clip;
   background-color: var(--bg-body);
   color: var(--text-main);
   font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -570,5 +572,167 @@ a, button, select, label, input[type="button"], input[type="submit"], [role="but
   .password-recovery-card {
     padding: 1.75rem 1.25rem !important;
     border-radius: 16px !important;
+  }
+}
+
+/* ======================================================== */
+/* RESPONSIVE LAYOUT & MODAL UTILITIES (ALL PORTALS)        */
+/* ======================================================== */
+
+.resp-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.resp-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.resp-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.resp-grid-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  gap: 1rem;
+}
+
+.resp-grid-split-bill {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: flex-start;
+}
+
+.resp-grid-touchpoint {
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1fr) 140px;
+  gap: 0.5rem;
+}
+
+.resp-grid-work-update {
+  display: grid;
+  grid-template-columns: minmax(130px, 180px) minmax(90px, 120px) minmax(150px, 1fr) auto;
+  align-items: end;
+  gap: 0.6rem;
+}
+
+.resp-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.resp-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+}
+
+.resp-modal-card {
+  background: #ffffff;
+  color: #0f172a;
+  border-radius: 16px;
+  width: 100%;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+  animation: modalSlideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.resp-modal-header {
+  padding: 1.25rem 1.75rem;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.resp-modal-body {
+  padding: 1.75rem;
+  overflow-y: auto;
+}
+
+.resp-toast-container {
+  position: fixed;
+  top: 20px;
+  right: 24px;
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 420px;
+  width: calc(100% - 3rem);
+  pointer-events: none;
+}
+
+@media (max-width: 900px) {
+  .resp-grid-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .resp-grid-split,
+  .resp-grid-split-bill,
+  .resp-grid-work-update {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .resp-grid-2,
+  .resp-grid-3,
+  .resp-grid-4,
+  .resp-grid-touchpoint {
+    grid-template-columns: 1fr;
+  }
+
+  .resp-modal-backdrop {
+    padding: 0.65rem;
+  }
+
+  .resp-modal-card {
+    max-height: 94dvh;
+    border-radius: 14px;
+  }
+
+  .resp-modal-header {
+    padding: 1rem 1.1rem;
+  }
+
+  .resp-modal-body {
+    padding: 1rem 1.1rem;
+  }
+
+  .resp-toast-container {
+    top: 12px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+    max-width: none;
+  }
+
+  .dialog-backdrop {
+    padding: 0.75rem;
+  }
+
+  .login-hero-panel,
+  .login-form-panel {
+    flex: 1 1 100% !important;
+    padding: 1.5rem 1.25rem !important;
   }
 }

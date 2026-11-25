@@ -103,3 +103,17 @@
 .genealogyCard { border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; padding: 1.25rem; display: flex; flex-direction: column; gap: .75rem; }
 .genealogyCard h4 { margin: 0; font-size: .95rem; font-weight: 800; color: #0f172a; border-bottom: 1px solid #f1f5f9; padding-bottom: .5rem; }
 
+@media (max-width: 1024px) {
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 640px) {
+  .header,
+  .sectionHeader,
+  .stageCard { flex-direction: column; align-items: stretch; gap: .75rem; }
+  .stats,
+  .formGrid,
+  .genealogyGrid { grid-template-columns: 1fr; }
+  .actions { justify-content: flex-start; flex-wrap: wrap; }
+}
+

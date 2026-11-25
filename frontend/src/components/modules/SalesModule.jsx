@@ -2081,7 +2081,7 @@ export default function SalesModule({ activeCompany, showToast, initialSubTab })
             />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="resp-grid-2">
             <div>
               <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '0.35rem' }}>
                 Ref Sales Order #
@@ -2108,7 +2108,7 @@ export default function SalesModule({ activeCompany, showToast, initialSubTab })
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="resp-grid-2">
             <div>
               <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '0.35rem' }}>
                 Taxable Base Value (₹) *

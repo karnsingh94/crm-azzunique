@@ -47,7 +47,7 @@ export default function CompanyDashboard({
         style={{
           background: 'linear-gradient(135deg, #18181b 0%, #2e1065 60%, #4c1d95 100%)',
           borderRadius: '16px',
-          padding: '2rem 2.25rem',
+          padding: 'clamp(1.15rem, 3vw, 2rem)',
           color: '#ffffff',
           display: 'flex',
           alignItems: 'center',
@@ -154,7 +154,7 @@ export default function CompanyDashboard({
 
       {/* 2. Real Company Provisioning & Operational Status Cards */}
       <div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.85rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.85rem' }}>
           <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}>
             Company Provisioning &amp; Operational Metrics
           </h3>
@@ -604,7 +604,7 @@ export default function CompanyDashboard({
           boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1.25rem' }}>
           <div>
             <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}>
               Assigned Services &amp; Permissions Tree
@@ -639,7 +639,7 @@ export default function CompanyDashboard({
             </p>
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(310px, 1fr))', gap: '1rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))', gap: '1rem' }}>
             {permittedServices.map((srv) => (
               <div
                 key={srv.code}

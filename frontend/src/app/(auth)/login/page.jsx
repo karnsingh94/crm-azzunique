@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { clearStoredSession, getStoredToken, rememberVerifiedSession, verifyCurrentSession } from '@/lib/auth';
 import { useCompanyAuthContext } from '@/context/CompanyAuthContext';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://crm.azzunique.in/api';
 const ALLOWED_ORIGINS = ['http://localhost:3000', 'http://localhost:3001'];
 
 function resolveCompanyDestination(user, redirectParam, fallback = '/dashboard') {
@@ -286,8 +286,10 @@ function LoginForm() {
       >
         {/* Left Visual Enterprise Panel */}
         <div
+          className="login-hero-panel"
           style={{
-            flex: '1 1 380px',
+            flex: '1 1 320px',
+            minWidth: 0,
             background: 'linear-gradient(145deg, #18181b 0%, #2e1065 55%, #4c1d95 100%)',
             padding: '2.4375rem 2rem',
             color: '#ffffff',
@@ -438,7 +440,8 @@ function LoginForm() {
         <div
           className="login-form-panel"
           style={{
-            flex: '1 1 420px',
+            flex: '1 1 340px',
+            minWidth: 0,
             padding: '2.4375rem 2.5rem',
             background: 'white',
             display: 'flex',
