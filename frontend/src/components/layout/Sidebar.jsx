@@ -186,8 +186,23 @@ function getPagesForModule(mod, hasSubModuleAccess) {
 
   const isPagePermitted = (page) => {
     if (typeof hasSubModuleAccess === 'function') {
-      if (page.href && hasSubModuleAccess(page.href)) return true;
-      if (page.code && hasSubModuleAccess(page.code)) return true;
+      const allowedByFn = (page.href && hasSubModuleAccess(page.href)) || (page.code && hasSubModuleAccess(page.code));
+      if (allowedByFn) return true;
+      const subMatch = allowedSubs.find((sub) => {
+        if (sub.isAllowed === false || sub.status === 'INACTIVE') return false;
+        if (sub.route && page.href && sub.route.toLowerCase() === page.href.toLowerCase()) return true;
+        if (
+          page.code &&
+          sub.code &&
+          (page.code === sub.code ||
+            SUBMODULE_ALIASES[sub.code] === page.code ||
+            SUBMODULE_ALIASES[page.code] === sub.code)
+        ) {
+          return true;
+        }
+        return false;
+      });
+      return Boolean(subMatch && subMatch.isAllowed !== false && subMatch.status !== 'INACTIVE');
     }
     return allowedSubs.some((sub) => {
       if (sub.isAllowed === false || sub.status === 'INACTIVE') return false;
@@ -241,6 +256,7 @@ export default function Sidebar({
   currentUser,
   permittedServices = [],
   hasSubModuleAccess,
+  hasModuleAccess,
   isCompanyAdmin = true,
   canManageServiceTeams = isCompanyAdmin,
   isCollapsed = false,
@@ -305,7 +321,8 @@ export default function Sidebar({
         setExpandedSubmodule(h.moduleCode);
       } else {
         const srv = permittedServices.find((s) => s.code === serviceCode);
-        const firstModCode = srv?.modules?.[0]?.code || null;
+        const srvModules = (srv?.modules || []).filter((m) => typeof hasModuleAccess !== 'function' || hasModuleAccess(m.code));
+        const firstModCode = srvModules?.[0]?.code || null;
         setExpandedSubmodule(firstModCode);
       }
     }
@@ -808,7 +825,14 @@ export default function Sidebar({
                   })()}
 
                   {/* Level 3: Submodules */}
-                  {service.modules?.map((mod) => {
+                  {(service.modules || [])
+                    .filter((mod) => {
+                      if (typeof hasModuleAccess === 'function' && !hasModuleAccess(mod.code)) {
+                        return false;
+                      }
+                      return mod.isAllowed !== false && mod.status !== 'INACTIVE';
+                    })
+                    .map((mod) => {
                     const pages = getPagesForModule(mod, hasSubModuleAccess);
                     if (pages.length === 0) return null;
                     const isSubExpanded = expandedSubmodule === mod.code;

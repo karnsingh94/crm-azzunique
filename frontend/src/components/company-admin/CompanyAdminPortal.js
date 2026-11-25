@@ -626,7 +626,7 @@ function CompanyAdminPortalInner({ initialTab, initialSubTab, children }) {
           return renderFeatureRestricted('Leads Pipeline');
         }
 
-        return <CrmModule key="module-crm" activeCompany={activeCompany} showToast={showToast} initialSubTab={initialSubTab} hasSubModuleAccess={hasSubModuleAccess} />;
+        return <CrmModule key="module-crm" activeCompany={activeCompany} showToast={showToast} initialSubTab={initialSubTab} hasSubModuleAccess={hasSubModuleAccess} hasModuleAccess={hasModuleAccess} />;
 
       case 'permission_controls':
         if (currentUser?.role !== 'COMPANY_ADMIN' && !isSuperAdminSwitched) {
@@ -766,6 +766,7 @@ function CompanyAdminPortalInner({ initialTab, initialSubTab, children }) {
         currentUser={currentUser}
         permittedServices={permittedServices}
         hasSubModuleAccess={hasSubModuleAccess}
+        hasModuleAccess={hasModuleAccess}
         isCompanyAdmin={currentUser?.role === 'COMPANY_ADMIN' || isSuperAdminSwitched}
         canManageServiceTeams={
           currentUser?.role === 'COMPANY_ADMIN' ||

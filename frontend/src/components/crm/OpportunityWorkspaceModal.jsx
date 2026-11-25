@@ -11,6 +11,7 @@ export default function OpportunityWorkspaceModal({
   renderStageBadge,
   handleUpdateOpportunityDetails,
   isUpdatingOpportunity,
+  hasSalesAccess = false,
 }) {
   if (!viewingOpportunity) return null;
 
@@ -216,26 +217,28 @@ export default function OpportunityWorkspaceModal({
             }}
           >
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-              <a
-                href={`/sales/quotations?customer=${encodeURIComponent(viewingOpportunity.companyName)}&opportunityId=${encodeURIComponent(viewingOpportunity.id)}`}
-                target="_blank"
-                rel="noreferrer"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.35rem',
-                  padding: '0.55rem 0.95rem',
-                  borderRadius: '6px',
-                  background: '#eff6ff',
-                  color: '#1d4ed8',
-                  border: '1px solid #bfdbfe',
-                  fontSize: '0.8rem',
-                  fontWeight: 700,
-                  textDecoration: 'none',
-                }}
-              >
-                <span>📄</span> Create Quotation ↗
-              </a>
+              {hasSalesAccess && (
+                <a
+                  href={`/sales/quotations?customer=${encodeURIComponent(viewingOpportunity.companyName)}&opportunityId=${encodeURIComponent(viewingOpportunity.id)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    padding: '0.55rem 0.95rem',
+                    borderRadius: '6px',
+                    background: '#eff6ff',
+                    color: '#1d4ed8',
+                    border: '1px solid #bfdbfe',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    textDecoration: 'none',
+                  }}
+                >
+                  <span>📄</span> Create Quotation ↗
+                </a>
+              )}
 
               {manageOppForm.stage !== 'WON' && (
                 <button

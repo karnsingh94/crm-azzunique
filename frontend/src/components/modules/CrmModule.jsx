@@ -22,6 +22,7 @@ import LeadIntegrationsModal from '../crm/LeadIntegrationsModal';
 import LeadConversionModal from '../crm/LeadConversionModal';
 import OpportunityWorkspaceModal from '../crm/OpportunityWorkspaceModal';
 import { useCompanyAuth } from '../../hooks/useCompanyAuth';
+import { useCompanyAccess } from '../../hooks/useCompanyAccess';
 
 const formatLeadValue = (value) => {
   if (value === '' || value === null || value === undefined) return '—';
@@ -35,10 +36,16 @@ const formatLeadValue = (value) => {
     : value;
 };
 
-export default function CrmModule({ activeCompany, showToast, initialSubTab, hasSubModuleAccess }) {
+export default function CrmModule({ activeCompany, showToast, initialSubTab, hasSubModuleAccess, hasModuleAccess }) {
   const router = useRouter();
   const pathname = usePathname();
   const { currentUser } = useCompanyAuth();
+
+  // Permission resolution for module boundary isolation
+  const { hasModuleAccess: checkCompanyModuleAccess } = useCompanyAccess(activeCompany);
+  const effectiveHasModuleAccess = typeof hasModuleAccess === 'function' ? hasModuleAccess : checkCompanyModuleAccess;
+  const hasSalesAccess = typeof effectiveHasModuleAccess === 'function' ? effectiveHasModuleAccess('sales') : false;
+  const hasProductAccess = typeof effectiveHasModuleAccess === 'function' ? effectiveHasModuleAccess('product') : false;
 
   // Route map for top tabs
   const TAB_ROUTES = {
@@ -67,6 +74,14 @@ export default function CrmModule({ activeCompany, showToast, initialSubTab, has
   // Employees can VIEW all modules across the team for pipeline visibility,
   // but can only PERFORM WORK / ACTIONS (create, edit, delete, status change) if assigned!
   const canPerformAction = (featureKey) => {
+    // Module boundary isolation: If action belongs to sales or product, company MUST have that module permitted!
+    if (['sales', 'sales_quotations', 'sales_orders', 'quotations', 'orders'].includes(featureKey)) {
+      if (!hasSalesAccess) return false;
+    }
+    if (['product', 'product_master', 'categories', 'price_management', 'pricing'].includes(featureKey)) {
+      if (!hasProductAccess) return false;
+    }
+
     const role = currentUser?.role || currentUser?.accessRole;
     if (
       !role ||
@@ -1613,7 +1628,9 @@ export default function CrmModule({ activeCompany, showToast, initialSubTab, has
       {/* Top Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#0f172a' }}>CRM &amp; Sales Pipeline</h2>
+          <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#0f172a' }}>
+            {hasSalesAccess ? 'CRM & Sales Pipeline' : 'CRM Pipeline'}
+          </h2>
           <p style={{ fontSize: '0.85rem', color: '#64748b' }}>
             Manage leads, corporate clients, key contacts, and deal opportunities for {activeCompany?.organizationName}
           </p>
@@ -2944,7 +2961,7 @@ export default function CrmModule({ activeCompany, showToast, initialSubTab, has
                               )}
 
                               {/* Quotation Proposal Button */}
-                              {canPerformAction('sales') && (
+                              {hasSalesAccess && canPerformAction('sales') && (
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -3618,27 +3635,29 @@ export default function CrmModule({ activeCompany, showToast, initialSubTab, has
                           >
                             <span>💼</span> Manage Deal
                           </button>
-                          <a
-                            href={`/sales/quotations?customer=${encodeURIComponent(opp.companyName)}`}
-                            onClick={(e) => e.stopPropagation()}
-                            title="Generate Formal Sales Quotation for this Deal"
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '0.25rem',
-                              padding: '4px 8px',
-                              borderRadius: '4px',
-                              background: '#eff6ff',
-                              color: '#1d4ed8',
-                              border: '1px solid #bfdbfe',
-                              fontSize: '0.75rem',
-                              fontWeight: 700,
-                              textDecoration: 'none',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            <span>📄</span> Quotation ↗
-                          </a>
+                          {hasSalesAccess && canPerformAction('sales') && (
+                            <a
+                              href={`/sales/quotations?customer=${encodeURIComponent(opp.companyName)}`}
+                              onClick={(e) => e.stopPropagation()}
+                              title="Generate Formal Sales Quotation for this Deal"
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.25rem',
+                                padding: '4px 8px',
+                                borderRadius: '4px',
+                                background: '#eff6ff',
+                                color: '#1d4ed8',
+                                border: '1px solid #bfdbfe',
+                                fontSize: '0.75rem',
+                                fontWeight: 700,
+                                textDecoration: 'none',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              <span>📄</span> Quotation ↗
+                            </a>
+                          )}
                           {canPerformAction('opportunities') ? (
                             <button
                               type="button"
@@ -5078,7 +5097,7 @@ export default function CrmModule({ activeCompany, showToast, initialSubTab, has
                   </div>
 
                   {/* Sales Handover Section */}
-                  {canPerformAction('sales') ? (
+                  {hasSalesAccess && canPerformAction('sales') ? (
                     <div style={{ padding: '1rem', background: '#f5f0ff', borderRadius: '8px', border: '1px solid #ebdfff' }}>
                       <span style={{ display: 'block', fontSize: '0.82rem', fontWeight: 800, color: '#5b21b6', marginBottom: '0.35rem' }}>
                         ⚡ Sales Execution Actions for {viewingCustomer.companyName}:
@@ -5139,7 +5158,7 @@ export default function CrmModule({ activeCompany, showToast, initialSubTab, has
                     <div style={{ padding: '0.85rem 1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
                       <span style={{ fontSize: '1.2rem' }}>🤝</span>
                       <span style={{ fontSize: '0.8rem', color: '#475569', lineHeight: 1.5 }}>
-                        <strong>Customer Management &amp; Sales Handover:</strong> Is customer ki verified requirements aur interaction logs yahan maintain karein. Sales team in requirements ke aadhar par Quotation aur Order process karegi.
+                        <strong>Customer Management &amp; Pipeline Records:</strong> Customer requirements, communication logs, and verified contact details are maintained here for {viewingCustomer.companyName}.
                       </span>
                     </div>
                   )}
@@ -6654,6 +6673,7 @@ export default function CrmModule({ activeCompany, showToast, initialSubTab, has
         renderStageBadge={renderStageBadge}
         handleUpdateOpportunityDetails={handleUpdateOpportunityDetails}
         isUpdatingOpportunity={isUpdatingOpportunity}
+        hasSalesAccess={hasSalesAccess}
       />
 
       {/* ------------------------------------------------------------- */}

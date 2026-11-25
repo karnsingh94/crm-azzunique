@@ -29,7 +29,10 @@ export default function CompanyDashboard({
   });
 
   // Calculate permission tags
-  const hasCrm = permittedServices.some(s => s.code === 'crm_sales');
+  const crmSalesSrv = permittedServices.find(s => s.code === 'crm_sales');
+  const hasCrm = crmSalesSrv?.modules ? crmSalesSrv.modules.some(m => m.code === 'crm' || m.code === 'crm_management') : Boolean(crmSalesSrv);
+  const hasSales = crmSalesSrv?.modules ? crmSalesSrv.modules.some(m => m.code === 'sales') : false;
+  const hasProduct = crmSalesSrv?.modules ? crmSalesSrv.modules.some(m => m.code === 'product') : false;
   const hasPurchase = permittedServices.some(s => s.code === 'purchase_vendor');
   const hasInventory = permittedServices.some(s => s.code === 'inventory_warehouse');
   const hasProduction = permittedServices.some(s => s.code === 'manufacturing_production');
@@ -101,7 +104,7 @@ export default function CompanyDashboard({
                 boxShadow: '0 4px 12px rgba(127, 34, 254, 0.35)',
               }}
             >
-              <IconPlus size={15} /> New Lead / Quote
+              <IconPlus size={15} /> {hasSales ? 'New Lead / Quote' : 'New Lead'}
             </button>
           )}
 
@@ -302,75 +305,76 @@ export default function CompanyDashboard({
             gap: '1rem',
           }}
         >
-          {/* CRM & Sales KPIs */}
+          {/* CRM KPIs */}
           {hasCrm && (
-            <>
+            <div
+              style={{
+                background: '#ffffff',
+                borderRadius: '12px',
+                padding: '1.25rem',
+                border: '1px solid #e2e8f0',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '1rem',
+              }}
+            >
               <div
                 style={{
-                  background: '#ffffff',
-                  borderRadius: '12px',
-                  padding: '1.25rem',
-                  border: '1px solid #e2e8f0',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                  width: '44px',
+                  height: '44px',
+                  borderRadius: '10px',
+                  background: '#f5f0ff',
+                  color: '#7f22fe',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '1rem',
+                  justifyContent: 'center',
                 }}
               >
-                <div
-                  style={{
-                    width: '44px',
-                    height: '44px',
-                    borderRadius: '10px',
-                    background: '#f5f0ff',
-                    color: '#7f22fe',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <IconCRM size={22} />
-                </div>
-                <div>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Active CRM Leads</div>
-                  <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#0f172a' }}>0</div>
-                  <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 600 }}>Awaiting initial lead entry</div>
-                </div>
+                <IconCRM size={22} />
               </div>
+              <div>
+                <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Active CRM Leads</div>
+                <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#0f172a' }}>0</div>
+                <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 600 }}>Awaiting initial lead entry</div>
+              </div>
+            </div>
+          )}
 
+          {/* Sales Operations KPIs */}
+          {hasSales && (
+            <div
+              style={{
+                background: '#ffffff',
+                borderRadius: '12px',
+                padding: '1.25rem',
+                border: '1px solid #e2e8f0',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '1rem',
+              }}
+            >
               <div
                 style={{
-                  background: '#ffffff',
-                  borderRadius: '12px',
-                  padding: '1.25rem',
-                  border: '1px solid #e2e8f0',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                  width: '44px',
+                  height: '44px',
+                  borderRadius: '10px',
+                  background: '#ecfdf5',
+                  color: '#10b981',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '1rem',
+                  justifyContent: 'center',
                 }}
               >
-                <div
-                  style={{
-                    width: '44px',
-                    height: '44px',
-                    borderRadius: '10px',
-                    background: '#ecfdf5',
-                    color: '#10b981',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <IconShoppingBag size={22} />
-                </div>
-                <div>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Sales Orders</div>
-                  <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#0f172a' }}>0</div>
-                  <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 600 }}>No orders recorded</div>
-                </div>
+                <IconShoppingBag size={22} />
               </div>
-            </>
+              <div>
+                <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Sales Orders</div>
+                <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#0f172a' }}>0</div>
+                <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 600 }}>No orders recorded</div>
+              </div>
+            </div>
           )}
 
           {/* Purchase & Vendor KPIs */}
