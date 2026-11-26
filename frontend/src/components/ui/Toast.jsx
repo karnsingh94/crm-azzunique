@@ -6,15 +6,6 @@ export default function ToastContainer({ toasts, onRemove }) {
   return (
     <div className="resp-toast-container">
       {toasts.map((t) => {
-        const isSuccess = t.type === 'success';
-        const isDanger = t.type === 'danger';
-        const isWarning = t.type === 'warning';
-
-        const bg = isSuccess ? '#ecfdf5' : isDanger ? '#fef2f2' : isWarning ? '#fffbeb' : '#f5f0ff';
-        const border = isSuccess ? '#10b981' : isDanger ? '#ef4444' : isWarning ? '#f59e0b' : '#7f22fe';
-        const text = isSuccess ? '#065f46' : isDanger ? '#991b1b' : isWarning ? '#92400e' : '#480b95';
-        const icon = isSuccess ? '✅' : isDanger ? '⛔' : isWarning ? '⚠️' : 'ℹ️';
-
         const rawTitle = typeof t.title === 'string'
           ? t.title
           : (t.title?.title || t.title?.message || (t.title ? String(t.title) : 'Notification'));
@@ -22,28 +13,40 @@ export default function ToastContainer({ toasts, onRemove }) {
           ? t.message
           : (t.message?.message || (t.message ? String(t.message) : null));
 
+        const explicitType = String(t.type || 'info').toLowerCase();
+        const combinedText = `${rawTitle} ${rawMessage || ''}`;
+        const isDeactivateOrDelete = /deactivat|delet|remov|reject|terminat/i.test(combinedText);
+        const isWarningText = /warn|caution|invalid|missing/i.test(combinedText);
+
+        let finalType = explicitType;
+        if (explicitType === 'danger' || explicitType === 'error' || isDeactivateOrDelete) {
+          finalType = 'danger';
+        } else if (explicitType === 'warning' || explicitType === 'warn' || isWarningText) {
+          finalType = 'warning';
+        } else if (explicitType === 'success') {
+          finalType = 'success';
+        } else {
+          finalType = 'info';
+        }
+
+        const icon = finalType === 'success'
+          ? '✅'
+          : finalType === 'danger'
+            ? '🔴'
+            : finalType === 'warning'
+              ? '⚠️'
+              : 'ℹ️';
+
         return (
           <div
             key={t.id}
-            style={{
-              pointerEvents: 'auto',
-              background: bg,
-              border: `1px solid ${border}`,
-              borderLeft: `5px solid ${border}`,
-              borderRadius: '10px',
-              padding: '12px 16px',
-              boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)',
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: '12px',
-              animation: 'fadeInSlide 0.25s ease-out',
-            }}
+            className={`resp-toast-item ${finalType}`}
           >
-            <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>{icon}</span>
+            <span style={{ fontSize: '1.15rem', lineHeight: 1 }}>{icon}</span>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 800, fontSize: '0.88rem', color: text }}>{rawTitle}</div>
+              <div style={{ fontWeight: 800, fontSize: '0.88rem', color: 'inherit' }}>{rawTitle}</div>
               {rawMessage && (
-                <div style={{ fontSize: '0.78rem', color: text, opacity: 0.9, marginTop: '2px', lineHeight: 1.4 }}>
+                <div style={{ fontSize: '0.78rem', color: 'inherit', opacity: 0.9, marginTop: '2px', lineHeight: 1.4 }}>
                   {rawMessage}
                 </div>
               )}
@@ -52,11 +55,14 @@ export default function ToastContainer({ toasts, onRemove }) {
               type="button"
               onClick={() => onRemove(t.id)}
               style={{
-                color: text,
-                opacity: 0.6,
-                fontSize: '1.2rem',
+                color: 'inherit',
+                opacity: 0.65,
+                fontSize: '1.25rem',
                 lineHeight: 1,
                 padding: '0 4px',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
               }}
               aria-label="Close notification"
             >

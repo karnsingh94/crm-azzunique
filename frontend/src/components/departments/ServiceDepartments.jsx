@@ -9,6 +9,7 @@ import LoadingSkeleton from '../ui/LoadingSkeleton';
 import PermissionHierarchyTree from '../permissions/PermissionHierarchyTree';
 import ServiceWorkBoard from './ServiceWorkBoard';
 import ToastContainer from '../ui/Toast';
+import { AnimatedModal } from '../ui/Modal';
 
 const EMPTY_PERMISSIONS = {
   manageMembers: false,
@@ -331,42 +332,41 @@ export default function ServiceDepartments({
         `/companies/${activeCompany.id}/services/${normalizedCode}/teams`,
         { noCache: true }
       );
-      const teamsList = response.data?.teams || [];
       setTeamData(response.data);
-
-      const urlTeamParam = searchParams?.get('team') || initialTeamSlug || '';
-      let matchedTeam = null;
-      if (urlTeamParam) {
-        matchedTeam = teamsList.find(
-          (t) => String(t.id) === String(urlTeamParam) || toTeamSlug(t.name) === urlTeamParam.toLowerCase()
-        );
-      }
-      if (!matchedTeam) {
-        matchedTeam = teamsList.find((t) => t.id === selectedTeamId) || teamsList[0] || null;
-      }
-
-      if (matchedTeam) {
-        setSelectedTeamId(matchedTeam.id);
-        if (typeof window !== 'undefined') {
-          const url = new URL(window.location.href);
-          const slug = toTeamSlug(matchedTeam.name) || matchedTeam.id;
-          if (url.searchParams.get('team') !== slug) {
-            url.searchParams.set('team', slug);
-            window.history.replaceState({ teamId: matchedTeam.id, teamSlug: slug }, '', url.toString());
-          }
-        }
-      }
     } catch (loadError) {
       setError(loadError.message || 'Unable to load department data.');
       showToast('Department Load Failed', loadError.message || 'Unable to load department data.', 'danger');
     } finally {
       setIsLoading(false);
     }
-  }, [activeCompany?.id, normalizedCode, searchParams, initialTeamSlug, selectedTeamId, showToast]);
+  }, [activeCompany?.id, normalizedCode, showToast]);
 
   useEffect(() => {
     loadTeams();
   }, [loadTeams]);
+
+  // Sync selected team from URL or fallback to first team once teamData is loaded
+  useEffect(() => {
+    const teamsList = teamData?.teams || [];
+    if (!teamsList.length) return;
+
+    const urlTeamParam = searchParams?.get('team') || initialTeamSlug || '';
+    let matchedTeam = null;
+
+    if (urlTeamParam) {
+      matchedTeam = teamsList.find(
+        (t) => String(t.id) === String(urlTeamParam) || toTeamSlug(t.name) === urlTeamParam.toLowerCase()
+      );
+    }
+
+    if (!matchedTeam) {
+      matchedTeam = teamsList.find((t) => String(t.id) === String(selectedTeamId)) || teamsList[0];
+    }
+
+    if (matchedTeam && String(matchedTeam.id) !== String(selectedTeamId)) {
+      setSelectedTeamId(matchedTeam.id);
+    }
+  }, [teamData, searchParams, initialTeamSlug, selectedTeamId]);
 
   useEffect(() => {
     const handlePopState = () => {
@@ -533,10 +533,11 @@ export default function ServiceDepartments({
           h.id === head.id ? { ...h, status: response.data?.status || targetStatus } : h
         ),
       }));
+      const isAct = targetStatus === 'ACTIVE';
       showToast?.(
-        `Department Head ${targetStatus === 'ACTIVE' ? 'Activated' : 'Deactivated'}`,
+        `Department Head ${isAct ? 'Activated' : 'Deactivated'}`,
         `${head.name} is now ${targetStatus.toLowerCase()}.`,
-        'success'
+        isAct ? 'success' : 'danger'
       );
     } catch (toggleError) {
       setActionError(toggleError.message || 'Could not change status.');
@@ -632,10 +633,11 @@ export default function ServiceDepartments({
           t.id === team.id ? { ...t, status: response.data?.status || targetStatus } : t
         ),
       }));
+      const isAct = targetStatus === 'ACTIVE';
       showToast?.(
-        `Team ${targetStatus === 'ACTIVE' ? 'Activated' : 'Deactivated'}`,
+        `Team ${isAct ? 'Activated' : 'Deactivated'}`,
         `${team.name} is now ${targetStatus.toLowerCase()}.`,
-        'success'
+        isAct ? 'success' : 'danger'
       );
     } catch (toggleErr) {
       setActionError(toggleErr.message || 'Could not toggle team status.');
@@ -666,10 +668,11 @@ export default function ServiceDepartments({
           };
         }),
       }));
+      const isAct = targetStatus === 'ACTIVE';
       showToast?.(
-        `Employee ${targetStatus === 'ACTIVE' ? 'Activated' : 'Deactivated'}`,
+        `Employee ${isAct ? 'Activated' : 'Deactivated'}`,
         `${employee.name} is now ${targetStatus.toLowerCase()}.`,
-        'success'
+        isAct ? 'success' : 'danger'
       );
     } catch (toggleErr) {
       setActionError(toggleErr.message || 'Could not change employee status.');
@@ -803,7 +806,7 @@ export default function ServiceDepartments({
         `/companies/${activeCompany.id}/services/${normalizedCode}/teams/${selectedTeam.id}/employees/${employee.id}`
       );
       setTeamData(response.data);
-      showToast?.('Employee Removed', `${employee.name} was removed from ${selectedTeam.name}.`, 'success');
+      showToast?.('Employee Removed', `${employee.name} was removed from ${selectedTeam.name}.`, 'danger');
     } catch (removeError) {
       setActionError(removeError.message || 'Could not remove this employee.');
       showToast?.('Employee Not Removed', removeError.message || 'Could not remove this employee.', 'danger');
@@ -978,17 +981,16 @@ export default function ServiceDepartments({
       </header>
 
       {/* ==================== CREATE / EDIT DEPARTMENT HEAD MODAL ==================== */}
-      {showCreateDeptHead && canManageDeptHeads && (
-        <div
-          className="resp-modal-backdrop"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              setShowCreateDeptHead(false);
-              resetDeptHeadForm();
-            }
-          }}
-        >
-          <div className="resp-modal-card" style={{ maxWidth: '840px', maxHeight: '92vh' }}>
+      <AnimatedModal
+        isOpen={showCreateDeptHead && canManageDeptHeads}
+        onClose={() => {
+          setShowCreateDeptHead(false);
+          resetDeptHeadForm();
+        }}
+        maxWidth="840px"
+      >
+        {({ close }) => (
+          <>
             <div className="resp-modal-header" style={{ padding: '1.25rem 1.5rem' }}>
               <div>
                 <h3 style={{ margin: 0, color: '#0f172a', fontSize: '1.05rem', fontWeight: 800 }}>
@@ -1002,10 +1004,7 @@ export default function ServiceDepartments({
               </div>
               <button
                 type="button"
-                onClick={() => {
-                  setShowCreateDeptHead(false);
-                  resetDeptHeadForm();
-                }}
+                onClick={close}
                 style={{
                   background: 'none',
                   border: 'none',
@@ -1307,10 +1306,7 @@ export default function ServiceDepartments({
               <div className="resp-modal-footer" style={{ padding: '1rem 1.5rem' }}>
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowCreateDeptHead(false);
-                    resetDeptHeadForm();
-                  }}
+                  onClick={close}
                   style={{ padding: '0.62rem 1.15rem', border: '1px solid #cbd5e1', borderRadius: '8px', color: '#475569', background: '#ffffff', fontWeight: 600, cursor: 'pointer' }}
                 >
                   Cancel
@@ -1338,9 +1334,9 @@ export default function ServiceDepartments({
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </AnimatedModal>
 
       {/* ==================== SECTION 1: DEPARTMENT HEADS ==================== */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
@@ -1566,18 +1562,17 @@ export default function ServiceDepartments({
         </div>
 
         {/* ==================== CREATE / EDIT TEAM MODAL ==================== */}
-        {showCreateTeam && canManageTeams && (
-          <div
-            className="resp-modal-backdrop"
-            onClick={(e) => {
-              if (e.target === e.currentTarget) {
-                setShowCreateTeam(false);
-                setEditingTeamId(null);
-                setTeamFormData({ name: '', description: '', headEmployeeId: '' });
-              }
-            }}
-          >
-            <div className="resp-modal-card" style={{ maxWidth: '640px', maxHeight: '90vh' }}>
+        <AnimatedModal
+          isOpen={showCreateTeam && canManageTeams}
+          onClose={() => {
+            setShowCreateTeam(false);
+            setEditingTeamId(null);
+            setTeamFormData({ name: '', description: '', headEmployeeId: '' });
+          }}
+          maxWidth="640px"
+        >
+          {({ close }) => (
+            <>
               <div className="resp-modal-header" style={{ padding: '1.25rem 1.5rem' }}>
                 <div>
                   <h4 style={{ margin: 0, color: '#0f172a', fontSize: '1.05rem', fontWeight: 800 }}>
@@ -1589,11 +1584,7 @@ export default function ServiceDepartments({
                 </div>
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowCreateTeam(false);
-                    setEditingTeamId(null);
-                    setTeamFormData({ name: '', description: '', headEmployeeId: '' });
-                  }}
+                  onClick={close}
                   style={{
                     background: 'none',
                     border: 'none',
@@ -1676,11 +1667,7 @@ export default function ServiceDepartments({
                 <div className="resp-modal-footer" style={{ padding: '1rem 1.5rem' }}>
                   <button
                     type="button"
-                    onClick={() => {
-                      setShowCreateTeam(false);
-                      setEditingTeamId(null);
-                      setTeamFormData({ name: '', description: '', headEmployeeId: '' });
-                    }}
+                    onClick={close}
                     style={{ padding: '0.58rem 1.15rem', border: '1px solid #cbd5e1', borderRadius: '8px', color: '#475569', background: '#ffffff', fontWeight: 600, cursor: 'pointer' }}
                   >
                     Cancel
@@ -1703,9 +1690,9 @@ export default function ServiceDepartments({
                   </button>
                 </div>
               </form>
-            </div>
-          </div>
-        )}
+            </>
+          )}
+        </AnimatedModal>
 
         {/* ==================== TEAMS DIRECTORY CARDS ==================== */}
         {teams.length > 0 ? (
@@ -2010,17 +1997,16 @@ export default function ServiceDepartments({
             </div>
 
             {/* Modal to add employee to selected team */}
-            {showCreateEmployee && (
-              <div
-                className="resp-modal-backdrop"
-                onClick={(e) => {
-                  if (e.target === e.currentTarget) {
-                    setShowCreateEmployee(false);
-                    resetEmployeeForm();
-                  }
-                }}
-              >
-                <div className="resp-modal-card" style={{ maxWidth: '840px', maxHeight: '92vh' }}>
+            <AnimatedModal
+              isOpen={showCreateEmployee && canManageMembers}
+              onClose={() => {
+                setShowCreateEmployee(false);
+                resetEmployeeForm();
+              }}
+              maxWidth="840px"
+            >
+              {({ close }) => (
+                <>
                   <div className="resp-modal-header" style={{ padding: '1.25rem 1.5rem' }}>
                     <div>
                       <h4 style={{ margin: 0, color: '#0f172a', fontSize: '1.05rem', fontWeight: 800 }}>
@@ -2032,10 +2018,7 @@ export default function ServiceDepartments({
                     </div>
                     <button
                       type="button"
-                      onClick={() => {
-                        setShowCreateEmployee(false);
-                        resetEmployeeForm();
-                      }}
+                      onClick={close}
                       style={{
                         background: 'none',
                         border: 'none',
@@ -2211,9 +2194,9 @@ export default function ServiceDepartments({
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.65rem' }}>
                     <div>
                       <h4 style={{ margin: 0, color: '#0f172a', fontSize: '0.95rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-                        <span>{newEmployee.isTeamLeader ? '👑 Team Leader Scopes & Permissions' : '🛠️ Assigned Work & Services (काम / सर्विस असाइन करें)'}</span>
+                        <span>{newEmployee.isTeamLeader ? '👑 Team Leader Scopes & Permissions' : '🛠️ Assigned Work & Services'}</span>
                       </h4>
-                      <p style={{ margin: '0.3rem 0 0', color: '#64748b', fontSize: '0.82rem', lineHeight: 1.5 }}>
+                      <p style={{ margin: '0.3rem 0 0',color: '#64748b', fontSize: '0.82rem', lineHeight: 1.5 }}>
                         {newEmployee.isTeamLeader
                           ? `Select modules and screens this Team Leader can manage within ${departmentName}.`
                           : `Select which module(s) this employee will work on (e.g. Leads, Customers, Contacts, Opportunities). They can view all records for team visibility, but can only create & edit the assigned modules.`}
@@ -2308,10 +2291,7 @@ export default function ServiceDepartments({
                   <div className="resp-modal-footer" style={{ padding: '1rem 1.5rem' }}>
                     <button
                       type="button"
-                      onClick={() => {
-                        setShowCreateEmployee(false);
-                        resetEmployeeForm();
-                      }}
+                      onClick={close}
                       style={{ padding: '0.58rem 1.15rem', border: '1px solid #cbd5e1', borderRadius: '8px', color: '#475569', background: '#ffffff', fontWeight: 600, cursor: 'pointer' }}
                     >
                       Cancel
@@ -2325,9 +2305,9 @@ export default function ServiceDepartments({
                     </button>
                   </div>
                 </form>
-              </div>
-            </div>
-          )}
+              </>
+            )}
+          </AnimatedModal>
 
             {/* Workspace Navigation Tabs */}
             <div style={{
@@ -2562,14 +2542,13 @@ export default function ServiceDepartments({
       </div>
 
       {/* ==================== EDIT EMPLOYEE PERMISSIONS MODAL ==================== */}
-      {editingEmployeeForPerms && (
-        <div
-          className="resp-modal-backdrop"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setEditingEmployeeForPerms(null);
-          }}
-        >
-          <div className="resp-modal-card" style={{ maxWidth: '720px', maxHeight: '92vh' }}>
+      <AnimatedModal
+        isOpen={Boolean(editingEmployeeForPerms)}
+        onClose={() => setEditingEmployeeForPerms(null)}
+        maxWidth="720px"
+      >
+        {({ close }) => editingEmployeeForPerms && (
+          <>
             {/* Modal Header */}
             <div className="resp-modal-header" style={{ padding: '1.25rem 1.5rem' }}>
               <div>
@@ -2584,7 +2563,7 @@ export default function ServiceDepartments({
               </div>
               <button
                 type="button"
-                onClick={() => setEditingEmployeeForPerms(null)}
+                onClick={close}
                 style={{
                   background: 'none',
                   border: 'none',
@@ -2690,7 +2669,7 @@ export default function ServiceDepartments({
             <div className="resp-modal-footer" style={{ padding: '1rem 1.5rem' }}>
               <button
                 type="button"
-                onClick={() => setEditingEmployeeForPerms(null)}
+                onClick={close}
                 disabled={isUpdatingPerms}
                 style={{
                   padding: '0.55rem 1.15rem',
@@ -2707,7 +2686,10 @@ export default function ServiceDepartments({
               </button>
               <button
                 type="button"
-                onClick={handleSaveEmployeePermissions}
+                onClick={async () => {
+                  await handleSaveEmployeePermissions();
+                  close();
+                }}
                 disabled={isUpdatingPerms}
                 style={{
                   padding: '0.55rem 1.25rem',
@@ -2724,9 +2706,9 @@ export default function ServiceDepartments({
                 {isUpdatingPerms ? 'Saving...' : 'Save Permissions'}
               </button>
             </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </AnimatedModal>
 
       {localToasts.length > 0 && (
         <ToastContainer toasts={localToasts} onRemove={removeLocalToast} />

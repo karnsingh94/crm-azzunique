@@ -1,4 +1,5 @@
 import express from 'express';
+import path from 'path';
 import env from './config/env.js';
 import { securityHeadersMiddleware, corsMiddleware } from './middlewares/cors.middleware.js';
 import notFoundMiddleware from './middlewares/notFound.middleware.js';
@@ -29,6 +30,10 @@ app.get('/', (req, res) => {
     authStatus: 'Integration Pending (Developed separately)',
   });
 });
+
+// Static uploaded files (tenant product images, attachments)
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+app.use('/api/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // 5. Mount API Routes
 app.use('/api', apiRoutes);
