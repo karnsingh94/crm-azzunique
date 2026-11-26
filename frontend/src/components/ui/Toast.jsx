@@ -15,6 +15,13 @@ export default function ToastContainer({ toasts, onRemove }) {
         const text = isSuccess ? '#065f46' : isDanger ? '#991b1b' : isWarning ? '#92400e' : '#480b95';
         const icon = isSuccess ? '✅' : isDanger ? '⛔' : isWarning ? '⚠️' : 'ℹ️';
 
+        const rawTitle = typeof t.title === 'string'
+          ? t.title
+          : (t.title?.title || t.title?.message || (t.title ? String(t.title) : 'Notification'));
+        const rawMessage = typeof t.message === 'string'
+          ? t.message
+          : (t.message?.message || (t.message ? String(t.message) : null));
+
         return (
           <div
             key={t.id}
@@ -34,10 +41,10 @@ export default function ToastContainer({ toasts, onRemove }) {
           >
             <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>{icon}</span>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 800, fontSize: '0.88rem', color: text }}>{t.title}</div>
-              {t.message && (
+              <div style={{ fontWeight: 800, fontSize: '0.88rem', color: text }}>{rawTitle}</div>
+              {rawMessage && (
                 <div style={{ fontSize: '0.78rem', color: text, opacity: 0.9, marginTop: '2px', lineHeight: 1.4 }}>
-                  {t.message}
+                  {rawMessage}
                 </div>
               )}
             </div>

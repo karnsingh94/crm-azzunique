@@ -126,31 +126,53 @@ function LoginForm() {
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE}/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          email: formData.email.trim(),
-          password: formData.password.trim(),
-          rememberMe: false,
-        }),
-      });
-
-      const data = await response.json().catch(() => null);
-
-      if (!response.ok || !data?.success) {
+      let response;
+      try {
+        response = await fetch(`${API_BASE}/auth/login`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            email: formData.email.trim(),
+            password: formData.password.trim(),
+            rememberMe: false,
+          }),
+        });
+      } catch (networkErr) {
+        console.error('[Login Network Error]', networkErr);
         setErrorMessage(
-          data?.message || 'Authentication failed. Please verify your email and password.'
+          `Cannot reach backend API (${API_BASE}/auth/login). ${networkErr?.message || 'Network/CORS request failed.'}`
         );
         setLoading(false);
         return;
       }
 
-      const { user, token, redirectUrl, targetOrigin } = data.data || data;
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok || !data?.success) {
+        setErrorMessage(
+          data?.message ||
+            (!response.ok
+              ? `Login request failed (HTTP ${response.status} from ${API_BASE}).`
+              : 'Authentication failed. Please verify your email and password.')
+        );
+        setLoading(false);
+        return;
+      }
+
+      const payload = data?.data && typeof data.data === 'object' ? data.data : data || {};
+      const user = payload.user || data?.user || (payload.role ? payload : null);
+      const token = payload.token || data?.token;
+      const redirectUrl = payload.redirectUrl || data?.redirectUrl;
+
+      if (!user || !token) {
+        setErrorMessage('Invalid authentication payload received from server.');
+        setLoading(false);
+        return;
+      }
 
       // 1. Wipe all previous session items to prevent cross-role collisions
       clearStoredSession();
@@ -196,8 +218,9 @@ function LoginForm() {
       }
 
       router.replace(destination);
-    } catch {
-      setErrorMessage('Network connection error. Please verify the backend service is running.');
+    } catch (err) {
+      console.error('[Login Error]', err);
+      setErrorMessage(err?.message || 'Unexpected error during login.');
       setLoading(false);
     }
   };

@@ -39,7 +39,7 @@ export function resolveTabFromPathname(pathname) {
   if (pathname === '/settings') return 'settings';
   if (pathname.startsWith('/reports')) return 'reports';
 
-  const serviceDeptMatch = pathname.match(/^\/services\/([^\/]+)(\/(?:department-head|service-team|departments))?$/);
+  const serviceDeptMatch = pathname.match(/^\/services\/([^\/]+)(\/(?:department-head|service-team|departments|teams(?:\/[^\/]+)?))?$/);
   if (serviceDeptMatch) {
     return `services:${serviceDeptMatch[1].replace(/-/g, '_')}:departments`;
   }
@@ -78,7 +78,7 @@ export function resolveTabFromPathname(pathname) {
   return 'dashboard';
 }
 
-function CompanyAdminPortalInner({ initialTab, initialSubTab, children }) {
+function CompanyAdminPortalInner({ initialTab, initialSubTab, initialTeamSlug, children }) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -148,6 +148,11 @@ function CompanyAdminPortalInner({ initialTab, initialSubTab, children }) {
     mediaQuery.addEventListener?.('change', handleChange);
     return () => mediaQuery.removeEventListener?.('change', handleChange);
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    document.documentElement.setAttribute('data-theme', resolvedTheme);
+  }, [resolvedTheme]);
 
   useEffect(() => {
     try {
@@ -246,11 +251,22 @@ function CompanyAdminPortalInner({ initialTab, initialSubTab, children }) {
   };
 
   // Toast notification helper
-  const showToast = (title, message, type = 'success') => {
-    if (type === 'success' && !adminPreferences.notifications.success) return;
-    if (type === 'info' && !adminPreferences.notifications.info) return;
+  const showToast = (titleOrToast, message, type = 'success') => {
+    let resolvedTitle = titleOrToast;
+    let resolvedMessage = message;
+    let resolvedType = type;
+
+    if (typeof titleOrToast === 'object' && titleOrToast !== null) {
+      resolvedTitle = titleOrToast.title || titleOrToast.name || 'Notification';
+      resolvedMessage = titleOrToast.message || titleOrToast.description || '';
+      resolvedType = titleOrToast.type || 'success';
+    }
+
+    if (resolvedType === 'success' && !adminPreferences.notifications.success) return;
+    if (resolvedType === 'info' && !adminPreferences.notifications.info) return;
+
     const id = Date.now() + Math.random();
-    setToasts(prev => [...prev, { id, title, message, type }]);
+    setToasts(prev => [...prev, { id, title: resolvedTitle, message: resolvedMessage, type: resolvedType }]);
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id));
     }, 4500);
@@ -490,6 +506,7 @@ function CompanyAdminPortalInner({ initialTab, initialSubTab, children }) {
           currentUser={currentUser}
           showToast={showToast}
           onNavigate={handleNavigate}
+          initialTeamSlug={initialTeamSlug}
         />
       );
     }

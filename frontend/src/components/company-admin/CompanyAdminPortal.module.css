@@ -139,8 +139,8 @@
 
 .topbar {
   min-height: 64px;
-  background-color: #ffffff;
-  border-bottom: 1px solid #e2e8f0;
+  background-color: var(--bg-surface, #ffffff);
+  border-bottom: 1px solid var(--border-subtle, #e2e8f0);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -150,6 +150,7 @@
   z-index: 40;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04);
   gap: 1rem;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .appContainerWithBanner .topbar {
@@ -165,12 +166,64 @@
   max-width: 520px;
 }
 
+.topbarIconButton {
+  padding: 0.45rem;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  color: var(--text-secondary, #64748b);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--bg-subtle, #f8fafc);
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.topbarIconButton:hover {
+  background-color: var(--bg-hover, #f1f5f9);
+  color: var(--text-main, #0f172a);
+}
+
 .topbarSearchWrap {
   position: relative;
   display: flex;
   align-items: center;
   width: 100%;
   min-width: 0;
+}
+
+.topbarSearchIcon {
+  position: absolute;
+  left: 12px;
+  color: var(--text-muted, #94a3b8);
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+}
+
+.topbarSearchInput {
+  width: 100%;
+  padding: 0.55rem 1rem 0.55rem 2.35rem;
+  border-radius: 9999px;
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  background-color: var(--bg-subtle, #f8fafc);
+  font-size: 0.84rem;
+  color: var(--text-main, #0f172a);
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.topbarSearchInput::placeholder {
+  color: var(--text-muted, #94a3b8);
+}
+
+.topbarSearchInput:focus {
+  border-color: var(--primary, #7f22fe);
+  background-color: var(--bg-surface, #ffffff);
+  box-shadow: 0 0 0 3px var(--primary-glow, rgba(127, 34, 254, 0.18));
 }
 
 .topbarRight {
@@ -180,14 +233,99 @@
   flex-shrink: 0;
 }
 
+.topbarNotificationBtn {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  background-color: var(--bg-subtle, #f8fafc);
+  color: var(--text-secondary, #475569);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.topbarNotificationBtn:hover {
+  background-color: var(--bg-hover, #f1f5f9);
+  color: var(--text-main, #0f172a);
+}
+
+.companyContextBadge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  background-color: var(--bg-subtle, #f8fafc);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-main, #1e293b);
+  transition: all 0.15s ease;
+}
+
+.companySwitcherBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  background-color: var(--bg-subtle, #f8fafc);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-main, #334155);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.companySwitcherBtn:hover {
+  background-color: var(--bg-hover, #f1f5f9);
+}
+
+.profileTrigger {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.35rem 0.65rem 0.35rem 0.45rem;
+  border-radius: 9999px;
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  background-color: var(--bg-surface, #ffffff);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.profileTrigger:hover {
+  background-color: var(--bg-subtle, #f8fafc);
+}
+
 .profileMetaWrap {
   text-align: left;
   display: flex;
   flex-direction: column;
 }
 
+.profileName {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-main, #0f172a);
+  line-height: 1.2;
+}
+
+.profileRole {
+  font-size: 0.7rem;
+  color: var(--text-muted, #64748b);
+}
+
 .topbarPopover {
   max-width: calc(100vw - 1.5rem) !important;
+  background-color: var(--bg-surface, #ffffff) !important;
+  border: 1px solid var(--border-subtle, #e2e8f0) !important;
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg, 0 10px 25px -5px rgba(0, 0, 0, 0.1));
 }
 
 .topbarNotificationsPopover {
@@ -246,9 +384,68 @@
 .appContainer[data-theme="dark"] main [style*="background: #f8fafc"],
 .appContainer[data-theme="dark"] main [style*="background:#f8fafc"],
 .appContainer[data-theme="dark"] main [style*="background-color: #f8fafc"],
-.appContainer[data-theme="dark"] main [style*="background-color:#f8fafc"] {
-  background-color: #181926 !important;
-  border-color: #26283b !important;
+.appContainer[data-theme="dark"] main [style*="background-color:#f8fafc"],
+.appContainer[data-theme="dark"] main [style*="background: #faf5ff"],
+.appContainer[data-theme="dark"] main [style*="background:#faf5ff"],
+.appContainer[data-theme="dark"] main [style*="background-color: #faf5ff"],
+.appContainer[data-theme="dark"] main [style*="background-color:#faf5ff"],
+.appContainer[data-theme="dark"] main [style*="background: rgb(250, 245, 255)"],
+.appContainer[data-theme="dark"] main [style*="background-color: rgb(250, 245, 255)"],
+.appContainer[data-theme="dark"] main [style*="background: #fcfaff"],
+.appContainer[data-theme="dark"] main [style*="background:#fcfaff"],
+.appContainer[data-theme="dark"] main [style*="background-color: #fcfaff"],
+.appContainer[data-theme="dark"] main [style*="background-color:#fcfaff"],
+.appContainer[data-theme="dark"] main [style*="background: rgb(252, 250, 255)"],
+.appContainer[data-theme="dark"] main [style*="background-color: rgb(252, 250, 255)"],
+.appContainer[data-theme="dark"] main [style*="background: #fdfcfe"],
+.appContainer[data-theme="dark"] main [style*="background:#fdfcfe"],
+.appContainer[data-theme="dark"] main [style*="background-color: #fdfcfe"],
+.appContainer[data-theme="dark"] main [style*="background-color:#fdfcfe"],
+.appContainer[data-theme="dark"] main [style*="background: rgb(253, 252, 254)"],
+.appContainer[data-theme="dark"] main [style*="background-color: rgb(253, 252, 254)"],
+.appContainer[data-theme="dark"] main [style*="background: #f5f0ff"],
+.appContainer[data-theme="dark"] main [style*="background:#f5f0ff"],
+.appContainer[data-theme="dark"] main [style*="background-color: #f5f0ff"],
+.appContainer[data-theme="dark"] main [style*="background-color:#f5f0ff"],
+.appContainer[data-theme="dark"] main [style*="background: rgb(245, 240, 255)"],
+.appContainer[data-theme="dark"] main [style*="background-color: rgb(245, 240, 255)"],
+.appContainer[data-theme="dark"] main [style*="background: #f5f3ff"],
+.appContainer[data-theme="dark"] main [style*="background:#f5f3ff"],
+.appContainer[data-theme="dark"] main [style*="background-color: #f5f3ff"],
+.appContainer[data-theme="dark"] main [style*="background-color:#f5f3ff"],
+.appContainer[data-theme="dark"] main [style*="background: #fdf2f8"],
+.appContainer[data-theme="dark"] main [style*="background:#fdf2f8"],
+.appContainer[data-theme="dark"] main [style*="background-color: #fdf2f8"],
+.appContainer[data-theme="dark"] main [style*="background-color:#fdf2f8"],
+.appContainer[data-theme="dark"] main [style*="background: #ede9fe"],
+.appContainer[data-theme="dark"] main [style*="background:#ede9fe"],
+.appContainer[data-theme="dark"] main [style*="background-color: #ede9fe"],
+.appContainer[data-theme="dark"] main [style*="background-color:#ede9fe"],
+.appContainer[data-theme="dark"] main [style*="background: #fafafa"],
+.appContainer[data-theme="dark"] main [style*="background:#fafafa"],
+.appContainer[data-theme="dark"] main [style*="background-color: #fafafa"],
+.appContainer[data-theme="dark"] main [style*="background-color:#fafafa"],
+.appContainer[data-theme="dark"] main [style*="background: #f4f4f5"],
+.appContainer[data-theme="dark"] main [style*="background:#f4f4f5"],
+.appContainer[data-theme="dark"] main [style*="background-color: #f4f4f5"],
+.appContainer[data-theme="dark"] main [style*="background-color:#f4f4f5"] {
+  background-color: #1e1b2e !important;
+  border-color: #38304f !important;
+}
+
+.appContainer[data-theme="dark"] main [style*="border: 1px solid #ddd6fe"],
+.appContainer[data-theme="dark"] main [style*="border: 1px solid #ebdfff"],
+.appContainer[data-theme="dark"] main [style*="border: 1px solid #c4b5fd"],
+.appContainer[data-theme="dark"] main [style*="border: 1px solid #e9d5ff"],
+.appContainer[data-theme="dark"] main [style*="border: 1px solid #e2e8f0"],
+.appContainer[data-theme="dark"] main [style*="border: 1px solid #cbd5e1"],
+.appContainer[data-theme="dark"] main [style*="border-bottom: 1px solid #ebdfff"],
+.appContainer[data-theme="dark"] main [style*="border-bottom: 1px solid #ddd6fe"],
+.appContainer[data-theme="dark"] main [style*="border-bottom: 1px solid #e2e8f0"],
+.appContainer[data-theme="dark"] main [style*="border-top: 1px solid #e2e8f0"],
+.appContainer[data-theme="dark"] main [style*="border-top: 1px solid #f1f5f9"],
+.appContainer[data-theme="dark"] main [style*="border-top: 1px solid #ebdfff"] {
+  border-color: #2e2842 !important;
 }
 
 .appContainer[data-theme="dark"] main input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
@@ -292,30 +489,58 @@
   color: #f8fafc !important;
 }
 
+:global(:root[data-theme="dark"]) .topbar,
+:global([data-theme="dark"]) .topbar,
+.portalShell[data-theme="dark"] .topbar,
 .appContainer[data-theme="dark"] .topbar {
   background-color: #12131c !important;
   border-bottom-color: #26283b !important;
-  color: #e2e8f0;
+  color: #e2e8f0 !important;
 }
 
+:global(:root[data-theme="dark"]) .topbarSearchInput,
+:global([data-theme="dark"]) .topbarSearchInput,
+.portalShell[data-theme="dark"] .topbarSearchInput,
+.appContainer[data-theme="dark"] .topbarSearchInput,
 .appContainer[data-theme="dark"] .topbar input {
   background-color: #181926 !important;
   border-color: #34364c !important;
   color: #f8fafc !important;
 }
 
+:global(:root[data-theme="dark"]) .topbarIconButton,
+:global(:root[data-theme="dark"]) .topbarNotificationBtn,
+:global(:root[data-theme="dark"]) .companyContextBadge,
+:global(:root[data-theme="dark"]) .companySwitcherBtn,
+:global(:root[data-theme="dark"]) .profileTrigger,
+:global([data-theme="dark"]) .topbarIconButton,
+:global([data-theme="dark"]) .topbarNotificationBtn,
+:global([data-theme="dark"]) .companyContextBadge,
+:global([data-theme="dark"]) .companySwitcherBtn,
+:global([data-theme="dark"]) .profileTrigger,
+.portalShell[data-theme="dark"] .topbarIconButton,
+.portalShell[data-theme="dark"] .topbarNotificationBtn,
+.portalShell[data-theme="dark"] .companyContextBadge,
+.portalShell[data-theme="dark"] .companySwitcherBtn,
+.portalShell[data-theme="dark"] .profileTrigger,
 .appContainer[data-theme="dark"] .topbarIconButton,
-.appContainer[data-theme="dark"] .companyContextBadge {
+.appContainer[data-theme="dark"] .topbarNotificationBtn,
+.appContainer[data-theme="dark"] .companyContextBadge,
+.appContainer[data-theme="dark"] .companySwitcherBtn,
+.appContainer[data-theme="dark"] .profileTrigger {
   background-color: #181926 !important;
   border-color: #34364c !important;
   color: #e2e8f0 !important;
 }
 
-.appContainer[data-theme="dark"] .profileTrigger {
-  background-color: #181926 !important;
-  border-color: #34364c !important;
-}
-
+:global(:root[data-theme="dark"]) .profileName,
+:global(:root[data-theme="dark"]) .profileDropdownName,
+:global(:root[data-theme="dark"]) .profileDropdownLink,
+:global(:root[data-theme="dark"]) .companyDropdownOption,
+:global([data-theme="dark"]) .profileName,
+:global([data-theme="dark"]) .profileDropdownName,
+:global([data-theme="dark"]) .profileDropdownLink,
+:global([data-theme="dark"]) .companyDropdownOption,
 .appContainer[data-theme="dark"] .profileName,
 .appContainer[data-theme="dark"] .profileDropdownName,
 .appContainer[data-theme="dark"] .profileDropdownLink,
@@ -323,13 +548,24 @@
   color: #e2e8f0 !important;
 }
 
+:global(:root[data-theme="dark"]) .profileRole,
+:global(:root[data-theme="dark"]) .profileDropdownEmail,
+:global([data-theme="dark"]) .profileRole,
+:global([data-theme="dark"]) .profileDropdownEmail,
 .appContainer[data-theme="dark"] .profileRole,
 .appContainer[data-theme="dark"] .profileDropdownEmail {
   color: #94a3b8 !important;
 }
 
+:global(:root[data-theme="dark"]) .profileDropdown,
+:global(:root[data-theme="dark"]) .companyDropdown,
+:global(:root[data-theme="dark"]) .topbarPopover,
+:global([data-theme="dark"]) .profileDropdown,
+:global([data-theme="dark"]) .companyDropdown,
+:global([data-theme="dark"]) .topbarPopover,
 .appContainer[data-theme="dark"] .profileDropdown,
-.appContainer[data-theme="dark"] .companyDropdown {
+.appContainer[data-theme="dark"] .companyDropdown,
+.appContainer[data-theme="dark"] .topbarPopover {
   background: #12131c !important;
   border-color: #26283b !important;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45) !important;

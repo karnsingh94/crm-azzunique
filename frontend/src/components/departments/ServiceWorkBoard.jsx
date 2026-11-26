@@ -26,6 +26,7 @@ export default function ServiceWorkBoard({
   employees: providedEmployees,
   teamId: providedTeamId,
   accentColor = '#7f22fe',
+  showToast,
 }) {
   const [items, setItems] = useState([]);
   const [employees, setEmployees] = useState(providedEmployees || []);
@@ -93,11 +94,14 @@ export default function ServiceWorkBoard({
         `/companies/${companyId}/services/${normalizedCode}/work-items`,
         { ...draft, teamId: teamId || undefined }
       );
+      const assignedTitle = draft.title;
       setDraft(EMPTY_WORK);
       setShowCreate(false);
       await loadBoard();
+      showToast?.('Work Assigned', `${assignedTitle} has been assigned.`, 'success');
     } catch (saveError) {
       setError(saveError.message || 'Unable to create this work item.');
+      showToast?.('Assignment Failed', saveError.message || 'Unable to create this work item.', 'danger');
     } finally {
       setIsSaving(false);
     }
@@ -115,8 +119,10 @@ export default function ServiceWorkBoard({
       });
       setUpdates((current) => ({ ...current, [item.id]: {} }));
       await loadBoard();
+      showToast?.('Work Updated', `Progress updated for "${item.title}".`, 'success');
     } catch (saveError) {
       setError(saveError.message || 'Unable to update this work item.');
+      showToast?.('Update Failed', saveError.message || 'Unable to update this work item.', 'danger');
     } finally {
       setIsSaving(false);
     }
@@ -146,43 +152,190 @@ export default function ServiceWorkBoard({
         {canAssign && (
           <button
             type="button"
-            onClick={() => setShowCreate((visible) => !visible)}
-            style={{ padding: '0.6rem 0.9rem', border: 0, borderRadius: '8px', color: '#fff', background: accentColor, fontWeight: 700, cursor: 'pointer' }}
+            onClick={() => {
+              setDraft(EMPTY_WORK);
+              setShowCreate(true);
+            }}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              padding: '0.6rem 1.1rem',
+              border: 0,
+              borderRadius: '8px',
+              color: '#fff',
+              background: accentColor,
+              fontWeight: 700,
+              fontSize: '0.84rem',
+              cursor: 'pointer',
+              boxShadow: '0 2px 6px rgba(127, 34, 254, 0.25)',
+              transition: 'all 0.15s ease',
+            }}
           >
-            {showCreate ? 'Cancel' : '＋ Assign Work'}
+            <span>＋ Assign Work</span>
           </button>
         )}
       </div>
 
       {showCreate && (
-        <form onSubmit={handleCreate} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', alignItems: 'end', gap: '0.75rem', padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '10px', background: '#f8fafc' }}>
-          <label style={{ color: '#334155', fontSize: '0.8rem', fontWeight: 700 }}>
-            Work title
-            <input required maxLength={180} value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} style={{ ...fieldStyle, display: 'block', marginTop: '0.3rem' }} />
-          </label>
-          <label style={{ color: '#334155', fontSize: '0.8rem', fontWeight: 700 }}>
-            Assign to
-            <select required value={draft.assignedToId} onChange={(event) => setDraft({ ...draft, assignedToId: event.target.value })} style={{ ...fieldStyle, display: 'block', marginTop: '0.3rem' }}>
-              <option value="">Select team member</option>
-              {activeEmployees.map((employee) => <option key={employee.id} value={employee.id}>{employee.name}</option>)}
-            </select>
-          </label>
-          <label style={{ color: '#334155', fontSize: '0.8rem', fontWeight: 700 }}>
-            Due date
-            <input type="date" value={draft.dueDate} onChange={(event) => setDraft({ ...draft, dueDate: event.target.value })} style={{ ...fieldStyle, display: 'block', marginTop: '0.3rem' }} />
-          </label>
-          <label style={{ color: '#334155', fontSize: '0.8rem', fontWeight: 700, gridColumn: '1 / -1' }}>
-            Details
-            <textarea rows={2} maxLength={10000} value={draft.description} onChange={(event) => setDraft({ ...draft, description: event.target.value })} style={{ ...fieldStyle, display: 'block', marginTop: '0.3rem', resize: 'vertical' }} />
-          </label>
-          <button type="submit" disabled={isSaving || activeEmployees.length === 0} style={{ justifySelf: 'start', padding: '0.6rem 1rem', border: 0, borderRadius: '7px', color: '#fff', background: isSaving ? '#94a3b8' : accentColor, fontWeight: 700, cursor: isSaving ? 'wait' : 'pointer' }}>
-            {isSaving ? 'Saving...' : 'Create Work'}
-          </button>
-          {!activeEmployees.length && <span style={{ color: '#b45309', fontSize: '0.82rem' }}>Add an active service employee before assigning work.</span>}
-        </form>
+        <div
+          className="resp-modal-backdrop"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowCreate(false);
+              setDraft(EMPTY_WORK);
+            }
+          }}
+        >
+          <div className="resp-modal-card" style={{ maxWidth: '600px', maxHeight: '90vh' }}>
+            <div className="resp-modal-header" style={{ padding: '1.25rem 1.5rem' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>
+                  Assign Work & Task
+                </h3>
+                <p style={{ margin: '0.25rem 0 0', fontSize: '0.82rem', color: '#64748b' }}>
+                  Create and delegate a work item to a team member for this service.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCreate(false);
+                  setDraft(EMPTY_WORK);
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '1.25rem',
+                  color: '#64748b',
+                  cursor: 'pointer',
+                  padding: '0.2rem',
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <form
+              onSubmit={handleCreate}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                flex: 1,
+                overflow: 'hidden',
+                margin: 0,
+              }}
+            >
+              <div className="resp-modal-body" style={{ padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div>
+                  <label style={{ color: '#334155', fontSize: '0.82rem', fontWeight: 700, display: 'block', marginBottom: '0.3rem' }}>
+                    Work Title *
+                  </label>
+                  <input
+                    required
+                    maxLength={180}
+                    placeholder="e.g. Follow up on hot leads in Mumbai region"
+                    value={draft.title}
+                    onChange={(event) => setDraft({ ...draft, title: event.target.value })}
+                    style={fieldStyle}
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.9rem' }}>
+                  <div>
+                    <label style={{ color: '#334155', fontSize: '0.82rem', fontWeight: 700, display: 'block', marginBottom: '0.3rem' }}>
+                      Assign To *
+                    </label>
+                    <select
+                      required
+                      value={draft.assignedToId}
+                      onChange={(event) => setDraft({ ...draft, assignedToId: event.target.value })}
+                      style={fieldStyle}
+                    >
+                      <option value="">Select team member</option>
+                      {activeEmployees.map((employee) => (
+                        <option key={employee.id} value={employee.id}>
+                          {employee.name} ({employee.email || employee.role || 'Member'})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ color: '#334155', fontSize: '0.82rem', fontWeight: 700, display: 'block', marginBottom: '0.3rem' }}>
+                      Due Date (Optional)
+                    </label>
+                    <input
+                      type="date"
+                      value={draft.dueDate}
+                      onChange={(event) => setDraft({ ...draft, dueDate: event.target.value })}
+                      style={fieldStyle}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ color: '#334155', fontSize: '0.82rem', fontWeight: 700, display: 'block', marginBottom: '0.3rem' }}>
+                    Task Details & Instructions
+                  </label>
+                  <textarea
+                    rows={3}
+                    maxLength={10000}
+                    placeholder="Add detailed scope, milestones, or instructions..."
+                    value={draft.description}
+                    onChange={(event) => setDraft({ ...draft, description: event.target.value })}
+                    style={{ ...fieldStyle, resize: 'vertical' }}
+                  />
+                </div>
+
+                {!activeEmployees.length && (
+                  <span style={{ color: '#b45309', fontSize: '0.82rem', background: '#fffbeb', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid #fde68a' }}>
+                    ⚠️ Please add an active team employee before assigning work.
+                  </span>
+                )}
+              </div>
+
+              <div className="resp-modal-footer" style={{ padding: '1rem 1.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCreate(false);
+                    setDraft(EMPTY_WORK);
+                  }}
+                  style={{
+                    padding: '0.58rem 1.15rem',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '8px',
+                    color: '#475569',
+                    background: '#ffffff',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSaving || activeEmployees.length === 0}
+                  style={{
+                    padding: '0.58rem 1.35rem',
+                    border: 0,
+                    borderRadius: '8px',
+                    color: '#fff',
+                    background: isSaving ? '#94a3b8' : accentColor,
+                    fontWeight: 700,
+                    cursor: isSaving ? 'wait' : 'pointer',
+                    boxShadow: '0 2px 6px rgba(127, 34, 254, 0.25)',
+                  }}
+                >
+                  {isSaving ? 'Assigning...' : 'Assign Work'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
-      {error && <p role="alert" style={{ margin: 0, color: '#b91c1c', fontSize: '0.84rem' }}>{error}</p>}
       {isLoading ? (
         <p style={{ margin: 0, color: '#64748b' }}>Loading team work…</p>
       ) : items.length ? (

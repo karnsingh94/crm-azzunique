@@ -23,11 +23,14 @@ import ServiceDepartments from '../departments/ServiceDepartments';
 import QuotationModal from '../sales/QuotationModal';
 import SalesOrderModal from '../sales/SalesOrderModal';
 import SalesBillModal from '../sales/SalesBillModal';
+import { useCompanyAuth } from '../../hooks/useCompanyAuth';
 
 export default function SalesModule({ activeCompany, showToast, initialSubTab }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { currentUser } = useCompanyAuth();
+  const isCompanyAdmin = currentUser?.role === 'COMPANY_ADMIN' || currentUser?.role === 'SUPER_ADMIN' || currentUser?.isCompanyAdmin === true;
   const customerParam = searchParams ? searchParams.get('customer') : null;
   const opportunityIdParam = searchParams ? searchParams.get('opportunityId') : null;
 
@@ -52,7 +55,7 @@ export default function SalesModule({ activeCompany, showToast, initialSubTab })
       if (pathname.includes('/sales/quotations')) resolved = 'quotes';
       else if (pathname.includes('/sales/proforma')) resolved = 'proforma';
       else if (pathname.includes('/sales/invoices')) resolved = 'invoices';
-      else if (pathname.includes('/departments')) resolved = 'departments';
+      else if (pathname.includes('/departments') && isCompanyAdmin) resolved = 'departments';
       if (activeTab !== resolved) {
         setActiveTab(resolved);
       }
@@ -1037,30 +1040,32 @@ export default function SalesModule({ activeCompany, showToast, initialSubTab })
           </span>
         </button>
 
-        <button
-          type="button"
-          onClick={() => handleTabChange('departments')}
-          style={{
-            padding: '0.65rem 1.15rem',
-            fontWeight: activeTab === 'departments' ? 700 : 600,
-            color: activeTab === 'departments' ? '#7f22fe' : '#64748b',
-            borderBottom: activeTab === 'departments' ? '2px solid #7f22fe' : '2px solid transparent',
-            background: activeTab === 'departments' ? '#faf5ff' : 'transparent',
-            borderRadius: '8px 8px 0 0',
-            borderTop: 'none',
-            borderLeft: 'none',
-            borderRight: 'none',
-            fontSize: '0.86rem',
-            cursor: 'pointer',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            transition: 'all 0.15s ease',
-          }}
-        >
-          <IconBuilding size={16} />
-          <span>Department Head</span>
-        </button>
+        {isCompanyAdmin && (
+          <button
+            type="button"
+            onClick={() => handleTabChange('departments')}
+            style={{
+              padding: '0.65rem 1.15rem',
+              fontWeight: activeTab === 'departments' ? 700 : 600,
+              color: activeTab === 'departments' ? '#7f22fe' : '#64748b',
+              borderBottom: activeTab === 'departments' ? '2px solid #7f22fe' : '2px solid transparent',
+              background: activeTab === 'departments' ? '#faf5ff' : 'transparent',
+              borderRadius: '8px 8px 0 0',
+              borderTop: 'none',
+              borderLeft: 'none',
+              borderRight: 'none',
+              fontSize: '0.86rem',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <IconBuilding size={16} />
+            <span>Department Head</span>
+          </button>
+        )}
       </div>
 
       {/* ------------------------------------------------------------- */}
@@ -2021,7 +2026,7 @@ export default function SalesModule({ activeCompany, showToast, initialSubTab })
       {/* ------------------------------------------------------------- */}
       {/* 5. DEPARTMENTS CONTENT */}
       {/* ------------------------------------------------------------- */}
-      {activeTab === 'departments' && (
+      {activeTab === 'departments' && isCompanyAdmin && (
         <ServiceDepartments
           activeCompany={activeCompany}
           serviceCode="crm_sales"

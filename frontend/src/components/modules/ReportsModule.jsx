@@ -149,7 +149,7 @@ export default function ReportsModule({
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    showToast?.({ title: 'Export Successful', message: 'Analytics CSV downloaded successfully.', type: 'success' });
+    showToast?.('Export Successful', 'Analytics CSV downloaded successfully.', 'success');
   };
 
   // SVG Chart Computations for Monthly Revenue Graph

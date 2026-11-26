@@ -1,12 +1,14 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useCompanyAuthContext } from '../../context/CompanyAuthContext';
 import { api } from '../../lib/api';
 import { validateEmployeeForm } from '../../lib/employee-validation';
 import LoadingSkeleton from '../ui/LoadingSkeleton';
 import PermissionHierarchyTree from '../permissions/PermissionHierarchyTree';
 import ServiceWorkBoard from './ServiceWorkBoard';
+import ToastContainer from '../ui/Toast';
 
 const EMPTY_PERMISSIONS = {
   manageMembers: false,
@@ -175,16 +177,56 @@ function buildTreeFromEmployeePermissions(permissions, availableModules, service
   };
 }
 
+export function toTeamSlug(name) {
+  if (!name) return '';
+  return String(name)
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
 export default function ServiceDepartments({
   activeCompany: providedCompany,
   serviceCode,
   currentUser: providedUser,
-  showToast,
+  showToast: propShowToast,
+  initialTeamSlug,
 }) {
+  const searchParams = useSearchParams();
   const authContext = useCompanyAuthContext() || {};
   const activeCompany = providedCompany || authContext.activeCompany;
   const currentUser = providedUser || authContext.currentUser;
   const normalizedCode = (serviceCode || 'crm_sales').replace(/-/g, '_');
+
+  const [localToasts, setLocalToasts] = useState([]);
+  const removeLocalToast = useCallback((id) => {
+    setLocalToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
+  const showToast = useCallback((titleOrToast, message, type = 'info') => {
+    let title = '';
+    let msg = '';
+    let toastType = type;
+    if (typeof titleOrToast === 'object' && titleOrToast !== null) {
+      title = titleOrToast.title || '';
+      msg = titleOrToast.message || '';
+      toastType = titleOrToast.type || type || 'info';
+    } else {
+      title = String(titleOrToast || '');
+      msg = String(message || '');
+    }
+
+    if (typeof propShowToast === 'function') {
+      propShowToast(title, msg, toastType);
+    } else {
+      const id = Date.now().toString() + Math.random().toString(36).slice(2, 6);
+      setLocalToasts((prev) => [...prev, { id, title, message: msg, type: toastType }]);
+      setTimeout(() => {
+        setLocalToasts((prev) => prev.filter((t) => t.id !== id));
+      }, 5000);
+    }
+  }, [propShowToast]);
 
   const [teamData, setTeamData] = useState(null);
   const [selectedTeamId, setSelectedTeamId] = useState('');
@@ -267,6 +309,19 @@ export default function ServiceDepartments({
   const selectedTeam = teamData?.teams?.find((team) => team.id === selectedTeamId) || null;
   const selectedTeamMembers = getVisibleTeamMembers(selectedTeam?.employees || []);
 
+  const handleSelectTeam = useCallback((team) => {
+    if (!team) return;
+    setSelectedTeamId(team.id);
+    if (typeof window !== 'undefined') {
+      const slug = toTeamSlug(team.name) || team.id;
+      const url = new URL(window.location.href);
+      if (url.searchParams.get('team') !== slug) {
+        url.searchParams.set('team', slug);
+        window.history.pushState({ teamId: team.id, teamSlug: slug }, '', url.toString());
+      }
+    }
+  }, []);
+
   const loadTeams = useCallback(async () => {
     if (!activeCompany?.id) return;
     setIsLoading(true);
@@ -276,22 +331,60 @@ export default function ServiceDepartments({
         `/companies/${activeCompany.id}/services/${normalizedCode}/teams`,
         { noCache: true }
       );
+      const teamsList = response.data?.teams || [];
       setTeamData(response.data);
-      setSelectedTeamId((previous) =>
-        response.data?.teams?.some((team) => team.id === previous)
-          ? previous
-          : (response.data?.teams?.[0]?.id || '')
-      );
+
+      const urlTeamParam = searchParams?.get('team') || initialTeamSlug || '';
+      let matchedTeam = null;
+      if (urlTeamParam) {
+        matchedTeam = teamsList.find(
+          (t) => String(t.id) === String(urlTeamParam) || toTeamSlug(t.name) === urlTeamParam.toLowerCase()
+        );
+      }
+      if (!matchedTeam) {
+        matchedTeam = teamsList.find((t) => t.id === selectedTeamId) || teamsList[0] || null;
+      }
+
+      if (matchedTeam) {
+        setSelectedTeamId(matchedTeam.id);
+        if (typeof window !== 'undefined') {
+          const url = new URL(window.location.href);
+          const slug = toTeamSlug(matchedTeam.name) || matchedTeam.id;
+          if (url.searchParams.get('team') !== slug) {
+            url.searchParams.set('team', slug);
+            window.history.replaceState({ teamId: matchedTeam.id, teamSlug: slug }, '', url.toString());
+          }
+        }
+      }
     } catch (loadError) {
       setError(loadError.message || 'Unable to load department data.');
+      showToast('Department Load Failed', loadError.message || 'Unable to load department data.', 'danger');
     } finally {
       setIsLoading(false);
     }
-  }, [activeCompany?.id, normalizedCode]);
+  }, [activeCompany?.id, normalizedCode, searchParams, initialTeamSlug, selectedTeamId, showToast]);
 
   useEffect(() => {
     loadTeams();
   }, [loadTeams]);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      if (typeof window === 'undefined') return;
+      const url = new URL(window.location.href);
+      const teamSlug = url.searchParams.get('team');
+      if (teamSlug && teamData?.teams) {
+        const matched = teamData.teams.find(
+          (t) => String(t.id) === String(teamSlug) || toTeamSlug(t.name) === teamSlug.toLowerCase()
+        );
+        if (matched) {
+          setSelectedTeamId(matched.id);
+        }
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [teamData?.teams]);
 
   const resetDeptHeadForm = () => {
     setEditingDeptHeadId(null);
@@ -328,21 +421,21 @@ export default function ServiceDepartments({
 
     if (editingDeptHeadId) {
       if (!newDeptHead.name || newDeptHead.name.trim().length < 2) {
-        setActionError('Full name must be at least 2 characters.');
+        showToast('Validation Error', 'Full name must be at least 2 characters.', 'warning');
         return;
       }
       if (!newDeptHead.phone || newDeptHead.phone.trim().length !== 10) {
-        setActionError('A valid 10-digit mobile number is required.');
+        showToast('Validation Error', 'A valid 10-digit mobile number is required.', 'warning');
         return;
       }
       if (newDeptHead.password && newDeptHead.password.trim().length < 8) {
-        setActionError('New password must be at least 8 characters long.');
+        showToast('Validation Error', 'New password must be at least 8 characters long.', 'warning');
         return;
       }
     } else {
       const validationError = validateEmployeeForm(newDeptHead, { requirePhone: true });
       if (validationError) {
-        setActionError(validationError);
+        showToast('Validation Error', validationError, 'warning');
         return;
       }
     }
@@ -458,11 +551,11 @@ export default function ServiceDepartments({
     event.preventDefault();
     setActionError('');
     if (!canManageTeams) {
-      setActionError('Only the Company Admin or Department Head can create or edit teams.');
+      showToast('Access Denied', 'Only the Company Admin or Department Head can create or edit teams.', 'danger');
       return;
     }
     if (!teamFormData.name || !teamFormData.name.trim()) {
-      setActionError('Team name is required.');
+      showToast('Validation Error', 'Team name is required.', 'warning');
       return;
     }
     setIsCreatingTeam(true);
@@ -482,6 +575,14 @@ export default function ServiceDepartments({
         setEditingTeamId(null);
         setTeamFormData({ name: '', description: '', headEmployeeId: '' });
         setShowCreateTeam(false);
+        if (typeof window !== 'undefined') {
+          const updatedSlug = toTeamSlug(response.data.name) || editingTeamId;
+          const url = new URL(window.location.href);
+          if (url.searchParams.get('team')) {
+            url.searchParams.set('team', updatedSlug);
+            window.history.replaceState({ teamId: editingTeamId, teamSlug: updatedSlug }, '', url.toString());
+          }
+        }
         showToast?.('Team Saved', `${response.data.name} details updated.`, 'success');
       } else {
         const response = await api.post(
@@ -496,6 +597,12 @@ export default function ServiceDepartments({
         setShowCreateTeam(false);
         await loadTeams();
         setSelectedTeamId(response.data.id.toString());
+        if (typeof window !== 'undefined') {
+          const slug = toTeamSlug(response.data.name) || response.data.id;
+          const url = new URL(window.location.href);
+          url.searchParams.set('team', slug);
+          window.history.pushState({ teamId: response.data.id, teamSlug: slug }, '', url.toString());
+        }
         showToast?.('Team Created', `${response.data.name} has been created in ${departmentName}.`, 'success');
       }
     } catch (createError) {
@@ -510,7 +617,7 @@ export default function ServiceDepartments({
   const handleToggleTeamStatus = async (team) => {
     setActionError('');
     if (!canManageTeams) {
-      setActionError('Only the Company Admin or Department Head can activate or deactivate teams.');
+      showToast('Access Denied', 'Only the Company Admin or Department Head can activate or deactivate teams.', 'danger');
       return;
     }
     setTogglingTeamId(team.id);
@@ -579,7 +686,7 @@ export default function ServiceDepartments({
     setActionError('');
     const validationError = validateEmployeeForm(newEmployee);
     if (validationError) {
-      setActionError(validationError);
+      showToast('Validation Error', validationError, 'warning');
       return;
     }
     setIsCreatingEmployee(true);
@@ -845,14 +952,8 @@ export default function ServiceDepartments({
             <button
               type="button"
               onClick={() => {
-                if (showCreateDeptHead) {
-                  setShowCreateDeptHead(false);
-                  resetDeptHeadForm();
-                } else {
-                  resetDeptHeadForm();
-                  setShowCreateDeptHead(true);
-                  setShowCreateTeam(false);
-                }
+                resetDeptHeadForm();
+                setShowCreateDeptHead(true);
               }}
               style={{
                 display: 'inline-flex',
@@ -861,40 +962,68 @@ export default function ServiceDepartments({
                 padding: '0.62rem 1.1rem',
                 border: '1px solid #7f22fe',
                 borderRadius: '8px',
-                color: showCreateDeptHead ? '#7f22fe' : '#ffffff',
-                background: showCreateDeptHead ? '#f5f0ff' : '#7f22fe',
+                color: '#ffffff',
+                background: '#7f22fe',
                 fontWeight: 700,
                 fontSize: '0.84rem',
                 cursor: 'pointer',
                 transition: 'all 0.15s ease',
               }}
             >
-              <span>{showCreateDeptHead ? (editingDeptHeadId ? 'Cancel Edit' : 'Cancel') : '+ Add Department Head'}</span>
+              <span>+ Add Department Head</span>
             </button>
           )}
 
         </div>
       </header>
 
-      {actionError && (
-        <p role="alert" style={{ margin: 0, padding: '0.75rem 1rem', borderRadius: '8px', color: '#991b1b', background: '#fef2f2', border: '1px solid #fecaca', fontSize: '0.85rem' }}>
-          {actionError}
-        </p>
-      )}
-
-      {/* ==================== CREATE / EDIT DEPARTMENT HEAD FORM ==================== */}
+      {/* ==================== CREATE / EDIT DEPARTMENT HEAD MODAL ==================== */}
       {showCreateDeptHead && canManageDeptHeads && (
-        <form onSubmit={handleCreateDeptHead} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1.25rem 1.5rem', border: '1px solid #ddd6fe', borderRadius: '14px', background: '#faf5ff' }}>
-          <div>
-            <h3 style={{ margin: '0 0 0.35rem', color: '#0f172a', fontSize: '1.05rem', fontWeight: 800 }}>
-              {editingDeptHeadId ? `Edit Department Head: ${newDeptHead.name}` : 'Create Department Head Account'}
-            </h3>
-            <p style={{ margin: 0, color: '#64748b', fontSize: '0.83rem' }}>
-              {editingDeptHeadId
-                ? `Update details and modular permissions for ${newDeptHead.name}.`
-                : `Assign an official Department Head for ${departmentName}. They can log in with their email & password and manage approved modules & teams.`}
-            </p>
-          </div>
+        <div
+          className="resp-modal-backdrop"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowCreateDeptHead(false);
+              resetDeptHeadForm();
+            }
+          }}
+        >
+          <div className="resp-modal-card" style={{ maxWidth: '840px', maxHeight: '92vh' }}>
+            <div className="resp-modal-header" style={{ padding: '1.25rem 1.5rem' }}>
+              <div>
+                <h3 style={{ margin: 0, color: '#0f172a', fontSize: '1.05rem', fontWeight: 800 }}>
+                  {editingDeptHeadId ? `Edit Department Head: ${newDeptHead.name}` : 'Create Department Head Account'}
+                </h3>
+                <p style={{ margin: '0.25rem 0 0', color: '#64748b', fontSize: '0.83rem' }}>
+                  {editingDeptHeadId
+                    ? `Update details and modular permissions for ${newDeptHead.name}.`
+                    : `Assign an official Department Head for ${departmentName}. They can log in with their email & password and manage approved modules & teams.`}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCreateDeptHead(false);
+                  resetDeptHeadForm();
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '1.25rem',
+                  color: '#64748b',
+                  cursor: 'pointer',
+                  padding: '0.2rem',
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <form
+              onSubmit={handleCreateDeptHead}
+              style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', margin: 0 }}
+            >
+              <div className="resp-modal-body" style={{ padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '0.9rem' }}>
             {/* Full Name */}
@@ -1173,40 +1302,44 @@ export default function ServiceDepartments({
             </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
-            <button
-              type="button"
-              onClick={() => {
-                setShowCreateDeptHead(false);
-                resetDeptHeadForm();
-              }}
-              style={{ padding: '0.62rem 1.15rem', border: '1px solid #cbd5e1', borderRadius: '8px', color: '#475569', background: '#ffffff', fontWeight: 600, cursor: 'pointer' }}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isCreatingDeptHead}
-              style={{
-                padding: '0.62rem 1.4rem',
-                border: 0,
-                borderRadius: '8px',
-                color: '#ffffff',
-                background: isCreatingDeptHead ? '#94a3b8' : '#7f22fe',
-                fontWeight: 700,
-                cursor: isCreatingDeptHead ? 'wait' : 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.4rem',
-                boxShadow: '0 2px 6px rgba(127, 34, 254, 0.25)',
-              }}
-            >
-              {isCreatingDeptHead
-                ? (editingDeptHeadId ? 'Saving Changes...' : 'Creating Department Head...')
-                : (editingDeptHeadId ? 'Save Department Head' : '+ Create Department Head')}
-            </button>
+              </div>
+
+              <div className="resp-modal-footer" style={{ padding: '1rem 1.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCreateDeptHead(false);
+                    resetDeptHeadForm();
+                  }}
+                  style={{ padding: '0.62rem 1.15rem', border: '1px solid #cbd5e1', borderRadius: '8px', color: '#475569', background: '#ffffff', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isCreatingDeptHead}
+                  style={{
+                    padding: '0.62rem 1.4rem',
+                    border: 0,
+                    borderRadius: '8px',
+                    color: '#ffffff',
+                    background: isCreatingDeptHead ? '#94a3b8' : '#7f22fe',
+                    fontWeight: 700,
+                    cursor: isCreatingDeptHead ? 'wait' : 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.4rem',
+                    boxShadow: '0 2px 6px rgba(127, 34, 254, 0.25)',
+                  }}
+                >
+                  {isCreatingDeptHead
+                    ? (editingDeptHeadId ? 'Saving Changes...' : 'Creating Department Head...')
+                    : (editingDeptHeadId ? 'Save Department Head' : '+ Create Department Head')}
+                </button>
+              </div>
+            </form>
           </div>
-        </form>
+        </div>
       )}
 
       {/* ==================== SECTION 1: DEPARTMENT HEADS ==================== */}
@@ -1407,10 +1540,9 @@ export default function ServiceDepartments({
             <button
               type="button"
               onClick={() => {
-                setShowCreateTeam((v) => !v);
                 setEditingTeamId(null);
                 setTeamFormData({ name: '', description: '', headEmployeeId: '' });
-                setShowCreateDeptHead(false);
+                setShowCreateTeam(true);
               }}
               style={{
                 display: 'inline-flex',
@@ -1419,8 +1551,8 @@ export default function ServiceDepartments({
                 padding: '0.62rem 1.15rem',
                 border: '1px solid #7f22fe',
                 borderRadius: '8px',
-                color: showCreateTeam ? '#7f22fe' : '#ffffff',
-                background: showCreateTeam ? '#f5f0ff' : '#7f22fe',
+                color: '#ffffff',
+                background: '#7f22fe',
                 fontWeight: 700,
                 fontSize: '0.84rem',
                 cursor: 'pointer',
@@ -1428,118 +1560,151 @@ export default function ServiceDepartments({
                 transition: 'all 0.15s ease',
               }}
             >
-              <span>{showCreateTeam ? '✕ Cancel' : `+ Create Team in ${departmentName}`}</span>
+              <span>{`+ Create Team in ${departmentName}`}</span>
             </button>
           )}
         </div>
 
-        {/* ==================== CREATE / EDIT TEAM FORM ==================== */}
+        {/* ==================== CREATE / EDIT TEAM MODAL ==================== */}
         {showCreateTeam && canManageTeams && (
-          <form
-            onSubmit={handleCreateTeam}
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '1rem',
-              padding: '1.25rem 1.5rem',
-              border: '1px solid #c4b5fd',
-              borderRadius: '14px',
-              background: '#faf5ff',
+          <div
+            className="resp-modal-backdrop"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setShowCreateTeam(false);
+                setEditingTeamId(null);
+                setTeamFormData({ name: '', description: '', headEmployeeId: '' });
+              }
             }}
           >
-            <div>
-              <h4 style={{ margin: '0 0 0.25rem', color: '#0f172a', fontSize: '1rem', fontWeight: 800 }}>
-                {editingTeamId ? `Edit Team: ${teamFormData.name}` : `Create Team inside ${departmentName}`}
-              </h4>
-              <p style={{ margin: 0, color: '#64748b', fontSize: '0.82rem' }}>
-                Teams structure the employees and work items for this department. Each team can have an appointed Team Leader and assigned members.
-              </p>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '0.9rem' }}>
-              <div>
-                <label style={{ color: '#334155', fontSize: '0.82rem', fontWeight: 700, display: 'block', marginBottom: '0.25rem' }}>
-                  Team Name *
-                </label>
-                <input
-                  required
-                  maxLength={150}
-                  placeholder="e.g. Sales Outreach Team"
-                  value={teamFormData.name}
-                  onChange={(e) => setTeamFormData((prev) => ({ ...prev, name: e.target.value }))}
-                  style={fieldStyle}
-                />
-              </div>
-
-              <div>
-                <label style={{ color: '#334155', fontSize: '0.82rem', fontWeight: 700, display: 'block', marginBottom: '0.25rem' }}>
-                  Team Purpose / Description
-                </label>
-                <input
-                  maxLength={255}
-                  placeholder="e.g. Inbound leads, client calls and deals"
-                  value={teamFormData.description}
-                  onChange={(e) => setTeamFormData((prev) => ({ ...prev, description: e.target.value }))}
-                  style={fieldStyle}
-                />
-              </div>
-
-              {!editingTeamId && (
+            <div className="resp-modal-card" style={{ maxWidth: '640px', maxHeight: '90vh' }}>
+              <div className="resp-modal-header" style={{ padding: '1.25rem 1.5rem' }}>
                 <div>
-                  <label style={{ color: '#334155', fontSize: '0.82rem', fontWeight: 700, display: 'block', marginBottom: '0.25rem' }}>
-                    Initial Team Leader (Optional)
-                  </label>
-                  <select
-                    value={teamFormData.headEmployeeId}
-                    onChange={(e) => setTeamFormData((prev) => ({ ...prev, headEmployeeId: e.target.value }))}
-                    style={fieldStyle}
-                  >
-                    <option value="">Appoint Leader Later</option>
-                    {(departmentHeads || []).map((h) => (
-                      <option key={h.id} value={h.id}>
-                        {h.name} ({h.email}) - Department Head
-                      </option>
-                    ))}
-                    {teams.flatMap((t) => t.employees || []).map((emp) => (
-                      <option key={emp.id} value={emp.id}>
-                        {emp.name} ({emp.email}) - {emp.role || 'Employee'}
-                      </option>
-                    ))}
-                  </select>
+                  <h4 style={{ margin: 0, color: '#0f172a', fontSize: '1.05rem', fontWeight: 800 }}>
+                    {editingTeamId ? `Edit Team: ${teamFormData.name}` : `Create Team inside ${departmentName}`}
+                  </h4>
+                  <p style={{ margin: '0.25rem 0 0', color: '#64748b', fontSize: '0.82rem' }}>
+                    Teams structure the employees and work items for this department. Each team can have an appointed Team Leader and assigned members.
+                  </p>
                 </div>
-              )}
-            </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCreateTeam(false);
+                    setEditingTeamId(null);
+                    setTeamFormData({ name: '', description: '', headEmployeeId: '' });
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    fontSize: '1.25rem',
+                    color: '#64748b',
+                    cursor: 'pointer',
+                    padding: '0.2rem',
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowCreateTeam(false);
-                  setEditingTeamId(null);
-                  setTeamFormData({ name: '', description: '', headEmployeeId: '' });
-                }}
-                style={{ padding: '0.58rem 1.1rem', border: '1px solid #cbd5e1', borderRadius: '8px', color: '#475569', background: '#ffffff', fontWeight: 600, cursor: 'pointer' }}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={isCreatingTeam}
+              <form
+                onSubmit={handleCreateTeam}
                 style={{
-                  padding: '0.58rem 1.3rem',
-                  border: 0,
-                  borderRadius: '8px',
-                  color: '#ffffff',
-                  background: isCreatingTeam ? '#94a3b8' : '#7f22fe',
-                  fontWeight: 700,
-                  cursor: isCreatingTeam ? 'wait' : 'pointer',
-                  boxShadow: '0 2px 6px rgba(127, 34, 254, 0.25)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  flex: 1,
+                  overflow: 'hidden',
+                  margin: 0,
                 }}
               >
-                {isCreatingTeam ? 'Saving Team...' : editingTeamId ? 'Save Team' : '+ Create Team'}
-              </button>
+                <div className="resp-modal-body" style={{ padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '0.9rem' }}>
+                    <div>
+                      <label style={{ color: '#334155', fontSize: '0.82rem', fontWeight: 700, display: 'block', marginBottom: '0.25rem' }}>
+                        Team Name *
+                      </label>
+                      <input
+                        required
+                        maxLength={150}
+                        placeholder="e.g. Sales Outreach Team"
+                        value={teamFormData.name}
+                        onChange={(e) => setTeamFormData((prev) => ({ ...prev, name: e.target.value }))}
+                        style={fieldStyle}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ color: '#334155', fontSize: '0.82rem', fontWeight: 700, display: 'block', marginBottom: '0.25rem' }}>
+                        Team Purpose / Description
+                      </label>
+                      <input
+                        maxLength={255}
+                        placeholder="e.g. Inbound leads, client calls and deals"
+                        value={teamFormData.description}
+                        onChange={(e) => setTeamFormData((prev) => ({ ...prev, description: e.target.value }))}
+                        style={fieldStyle}
+                      />
+                    </div>
+
+                    {!editingTeamId && (
+                      <div style={{ gridColumn: '1 / -1' }}>
+                        <label style={{ color: '#334155', fontSize: '0.82rem', fontWeight: 700, display: 'block', marginBottom: '0.25rem' }}>
+                          Initial Team Leader (Optional)
+                        </label>
+                        <select
+                          value={teamFormData.headEmployeeId}
+                          onChange={(e) => setTeamFormData((prev) => ({ ...prev, headEmployeeId: e.target.value }))}
+                          style={fieldStyle}
+                        >
+                          <option value="">Appoint Leader Later</option>
+                          {(departmentHeads || []).map((h) => (
+                            <option key={h.id} value={h.id}>
+                              {h.name} ({h.email}) - Department Head
+                            </option>
+                          ))}
+                          {teams.flatMap((t) => t.employees || []).map((emp) => (
+                            <option key={emp.id} value={emp.id}>
+                              {emp.name} ({emp.email}) - {emp.role || 'Employee'}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="resp-modal-footer" style={{ padding: '1rem 1.5rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCreateTeam(false);
+                      setEditingTeamId(null);
+                      setTeamFormData({ name: '', description: '', headEmployeeId: '' });
+                    }}
+                    style={{ padding: '0.58rem 1.15rem', border: '1px solid #cbd5e1', borderRadius: '8px', color: '#475569', background: '#ffffff', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isCreatingTeam}
+                    style={{
+                      padding: '0.58rem 1.35rem',
+                      border: 0,
+                      borderRadius: '8px',
+                      color: '#ffffff',
+                      background: isCreatingTeam ? '#94a3b8' : '#7f22fe',
+                      fontWeight: 700,
+                      cursor: isCreatingTeam ? 'wait' : 'pointer',
+                      boxShadow: '0 2px 6px rgba(127, 34, 254, 0.25)',
+                    }}
+                  >
+                    {isCreatingTeam ? 'Saving Team...' : editingTeamId ? 'Save Team' : '+ Create Team'}
+                  </button>
+                </div>
+              </form>
             </div>
-          </form>
+          </div>
         )}
 
         {/* ==================== TEAMS DIRECTORY CARDS ==================== */}
@@ -1556,12 +1721,12 @@ export default function ServiceDepartments({
               return (
                 <div
                   key={team.id}
-                  onClick={() => setSelectedTeamId(team.id)}
+                  onClick={() => handleSelectTeam(team)}
                   style={{
                     padding: '1.1rem 1.2rem',
                     borderRadius: '12px',
-                    border: isSelected ? '2px solid #7f22fe' : '1px solid #e2e8f0',
-                    background: isSelected ? '#faf5ff' : '#ffffff',
+                    border: isSelected ? '2px solid #7f22fe' : '1px solid var(--border-subtle, #e2e8f0)',
+                    background: isSelected ? 'var(--card-selected-bg, #faf5ff)' : 'var(--bg-card, #ffffff)',
                     cursor: 'pointer',
                     boxShadow: isSelected ? '0 4px 14px rgba(127, 34, 254, 0.12)' : '0 1px 3px rgba(0,0,0,0.04)',
                     transition: 'all 0.2s ease',
@@ -1765,17 +1930,17 @@ export default function ServiceDepartments({
         {selectedTeam && (
           <div style={{
             marginTop: '0.5rem',
-            border: '1px solid #ddd6fe',
+            border: '1px solid var(--border-subtle, #ddd6fe)',
             borderRadius: '14px',
-            background: '#ffffff',
+            background: 'var(--bg-card, #ffffff)',
             boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
             overflow: 'hidden',
           }}>
             {/* Team Workspace Top Bar */}
             <div style={{
               padding: '1.1rem 1.35rem',
-              background: '#fcfaff',
-              borderBottom: '1px solid #ebdfff',
+              background: 'var(--header-tint-bg, #fcfaff)',
+              borderBottom: '1px solid var(--border-subtle, #ebdfff)',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
@@ -1819,7 +1984,10 @@ export default function ServiceDepartments({
                 {canManageMembers && (
                   <button
                     type="button"
-                    onClick={() => setShowCreateEmployee((v) => !v)}
+                    onClick={() => {
+                      resetEmployeeForm();
+                      setShowCreateEmployee(true);
+                    }}
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
@@ -1835,23 +2003,64 @@ export default function ServiceDepartments({
                       boxShadow: '0 2px 5px rgba(127, 34, 254, 0.25)',
                     }}
                   >
-                    <span>{showCreateEmployee ? '✕ Cancel' : `+ Add Employee to ${selectedTeam.name}`}</span>
+                    <span>+ Add Employee to {selectedTeam.name}</span>
                   </button>
                 )}
               </div>
             </div>
 
-            {/* Form to add employee to selected team */}
+            {/* Modal to add employee to selected team */}
             {showCreateEmployee && (
-              <form onSubmit={handleCreateEmployee} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.85rem', padding: '1.25rem 1.35rem', borderBottom: '1px solid #ddd6fe', background: '#faf5ff' }}>
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <h4 style={{ margin: '0 0 0.2rem', color: '#0f172a', fontSize: '0.96rem', fontWeight: 800 }}>
-                    Add Employee to {selectedTeam.name}
-                  </h4>
-                  <p style={{ margin: 0, color: '#64748b', fontSize: '0.81rem' }}>
-                    Create login credentials and job details for this team member.
-                  </p>
-                </div>
+              <div
+                className="resp-modal-backdrop"
+                onClick={(e) => {
+                  if (e.target === e.currentTarget) {
+                    setShowCreateEmployee(false);
+                    resetEmployeeForm();
+                  }
+                }}
+              >
+                <div className="resp-modal-card" style={{ maxWidth: '840px', maxHeight: '92vh' }}>
+                  <div className="resp-modal-header" style={{ padding: '1.25rem 1.5rem' }}>
+                    <div>
+                      <h4 style={{ margin: 0, color: '#0f172a', fontSize: '1.05rem', fontWeight: 800 }}>
+                        Add Employee to {selectedTeam.name}
+                      </h4>
+                      <p style={{ margin: '0.25rem 0 0', color: '#64748b', fontSize: '0.82rem' }}>
+                        Create login credentials and assign work modules / services for this team member.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowCreateEmployee(false);
+                        resetEmployeeForm();
+                      }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        fontSize: '1.25rem',
+                        color: '#64748b',
+                        cursor: 'pointer',
+                        padding: '0.2rem',
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <form
+                    onSubmit={handleCreateEmployee}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      flex: 1,
+                      overflow: 'hidden',
+                      margin: 0,
+                    }}
+                  >
+                    <div className="resp-modal-body" style={{ padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.85rem' }}>
 
                 <label style={{ color: '#334155', fontSize: '0.82rem', fontWeight: 700 }}>
                   Employee Name *
@@ -2093,27 +2302,32 @@ export default function ServiceDepartments({
                   )}
                 </div>
 
-                <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end', gap: '0.65rem' }}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowCreateEmployee(false);
-                      resetEmployeeForm();
-                    }}
-                    style={{ padding: '0.58rem 1.1rem', border: '1px solid #cbd5e1', borderRadius: '8px', color: '#475569', background: '#ffffff', fontWeight: 600, cursor: 'pointer' }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isCreatingEmployee}
-                    style={{ padding: '0.58rem 1.3rem', border: 0, borderRadius: '8px', color: '#ffffff', background: isCreatingEmployee ? '#94a3b8' : '#7f22fe', fontWeight: 700, cursor: isCreatingEmployee ? 'wait' : 'pointer', boxShadow: '0 2px 6px rgba(127, 34, 254, 0.25)' }}
-                  >
-                    {isCreatingEmployee ? 'Adding...' : `Add to ${selectedTeam.name}`}
-                  </button>
-                </div>
-              </form>
-            )}
+                    </div>
+                  </div>
+
+                  <div className="resp-modal-footer" style={{ padding: '1rem 1.5rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowCreateEmployee(false);
+                        resetEmployeeForm();
+                      }}
+                      style={{ padding: '0.58rem 1.15rem', border: '1px solid #cbd5e1', borderRadius: '8px', color: '#475569', background: '#ffffff', fontWeight: 600, cursor: 'pointer' }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isCreatingEmployee}
+                      style={{ padding: '0.58rem 1.35rem', border: 0, borderRadius: '8px', color: '#ffffff', background: isCreatingEmployee ? '#94a3b8' : '#7f22fe', fontWeight: 700, cursor: isCreatingEmployee ? 'wait' : 'pointer', boxShadow: '0 2px 6px rgba(127, 34, 254, 0.25)' }}
+                    >
+                      {isCreatingEmployee ? 'Adding...' : `Add to ${selectedTeam.name}`}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
 
             {/* Workspace Navigation Tabs */}
             <div style={{
@@ -2349,40 +2563,15 @@ export default function ServiceDepartments({
 
       {/* ==================== EDIT EMPLOYEE PERMISSIONS MODAL ==================== */}
       {editingEmployeeForPerms && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(15, 23, 42, 0.6)',
-          backdropFilter: 'blur(4px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 9999,
-          padding: '1rem',
-        }}>
-          <div style={{
-            background: '#ffffff',
-            borderRadius: '16px',
-            maxWidth: '680px',
-            width: '100%',
-            maxHeight: '90vh',
-            display: 'flex',
-            flexDirection: 'column',
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.15)',
-            overflow: 'hidden',
-          }}>
+        <div
+          className="resp-modal-backdrop"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setEditingEmployeeForPerms(null);
+          }}
+        >
+          <div className="resp-modal-card" style={{ maxWidth: '720px', maxHeight: '92vh' }}>
             {/* Modal Header */}
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '1.2rem 1.5rem',
-              borderBottom: '1px solid #e2e8f0',
-              background: '#f8fafc',
-            }}>
+            <div className="resp-modal-header" style={{ padding: '1.25rem 1.5rem' }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#0f172a' }}>
                   Update Permissions: {editingEmployeeForPerms.name}
@@ -2410,13 +2599,7 @@ export default function ServiceDepartments({
             </div>
 
             {/* Modal Body */}
-            <div style={{ padding: '1.25rem 1.5rem', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {actionError && (
-                <div style={{ padding: '0.75rem 1rem', borderRadius: '8px', background: '#fef2f2', color: '#991b1b', fontSize: '0.82rem', border: '1px solid #fecaca' }}>
-                  {actionError}
-                </div>
-              )}
-
+            <div className="resp-modal-body" style={{ padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {/* Quick Select Buttons */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
                 <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#334155' }}>
@@ -2504,15 +2687,7 @@ export default function ServiceDepartments({
             </div>
 
             {/* Modal Footer */}
-            <div style={{
-              display: 'flex',
-              justifyContent: 'flex-end',
-              flexWrap: 'wrap',
-              gap: '0.75rem',
-              padding: '1rem 1.5rem',
-              borderTop: '1px solid #e2e8f0',
-              background: '#f8fafc',
-            }}>
+            <div className="resp-modal-footer" style={{ padding: '1rem 1.5rem' }}>
               <button
                 type="button"
                 onClick={() => setEditingEmployeeForPerms(null)}
@@ -2551,6 +2726,10 @@ export default function ServiceDepartments({
             </div>
           </div>
         </div>
+      )}
+
+      {localToasts.length > 0 && (
+        <ToastContainer toasts={localToasts} onRemove={removeLocalToast} />
       )}
     </section>
   );

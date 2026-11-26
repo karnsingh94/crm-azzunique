@@ -23,7 +23,8 @@ const EMPTY_EMPLOYEE = {
 };
 
 export default function TeamModule({ activeCompany, currentUser, showToast, initialSubTab }) {
-  const [activeTab, setActiveTab] = useState(initialSubTab === 'departments' ? 'teams' : initialSubTab || 'members');
+  const isCompanyAdmin = currentUser?.role === 'COMPANY_ADMIN' || currentUser?.role === 'SUPER_ADMIN' || currentUser?.isCompanyAdmin === true;
+  const [activeTab, setActiveTab] = useState(initialSubTab === 'departments' && isCompanyAdmin ? 'teams' : initialSubTab || 'members');
   const [employees, setEmployees] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -39,8 +40,8 @@ export default function TeamModule({ activeCompany, currentUser, showToast, init
   const [selectedServiceCode, setSelectedServiceCode] = useState('');
 
   useEffect(() => {
-    setActiveTab(initialSubTab === 'departments' ? 'teams' : initialSubTab || 'members');
-  }, [initialSubTab]);
+    setActiveTab(initialSubTab === 'departments' && isCompanyAdmin ? 'teams' : initialSubTab || 'members');
+  }, [initialSubTab, isCompanyAdmin]);
 
   useEffect(() => {
     if (!services.some((service) => service.code === selectedServiceCode)) {
@@ -161,7 +162,7 @@ export default function TeamModule({ activeCompany, currentUser, showToast, init
       <div style={{ display: 'flex', flexWrap: 'wrap', borderBottom: '1px solid #e2e8f0', gap: '0.5rem' }}>
         {[
           ['members', `Company Employees (${employees.length})`],
-          ['teams', 'Department Head Workspace'],
+          ...(isCompanyAdmin ? [['teams', 'Department Head Workspace']] : []),
         ].map(([tab, title]) => (
           <button
             key={tab}
@@ -174,7 +175,7 @@ export default function TeamModule({ activeCompany, currentUser, showToast, init
         ))}
       </div>
 
-      {activeTab === 'teams' ? (
+      {activeTab === 'teams' && isCompanyAdmin ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {services.length ? (
             <>

@@ -102,10 +102,12 @@ export const departmentController = {
 
   async getServiceTeam(req, res, next) {
     try {
+      const teamId = req.params.teamId || req.query.teamId || null;
       const team = await departmentService.getServiceTeam(
         req.params.companyId,
         req.params.serviceCode,
-        req.user
+        req.user,
+        teamId
       );
       res.json({ success: true, data: team });
     } catch (err) {
