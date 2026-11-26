@@ -429,9 +429,19 @@ export default function SuperAdminPortal({ initialTab, initialServiceId }) {
   const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://crm.azzunique.in/api';
 
   // Toast Trigger Helper
-  const showToast = (title, message, type = 'success') => {
+  const showToast = (titleOrToast, message, type = 'success') => {
+    let resolvedTitle = titleOrToast;
+    let resolvedMessage = message;
+    let resolvedType = type;
+
+    if (typeof titleOrToast === 'object' && titleOrToast !== null) {
+      resolvedTitle = titleOrToast.title || titleOrToast.name || 'Notification';
+      resolvedMessage = titleOrToast.message || titleOrToast.description || '';
+      resolvedType = titleOrToast.type || 'success';
+    }
+
     const id = Date.now() + Math.random();
-    const newToast = { id, title, message, type };
+    const newToast = { id, title: resolvedTitle, message: resolvedMessage, type: resolvedType };
     setToasts(prev => [...prev, newToast]);
 
     setTimeout(() => {
@@ -1796,7 +1806,7 @@ export default function SuperAdminPortal({ initialTab, initialServiceId }) {
                   <h3>Platform Statistics</h3>
                   <p>Real-time overview of Services, Modules, and provisioned Client Panels</p>
                 </div>
-                <div style={{ display: 'flex', gap: '0.85rem', flexWrap: 'wrap', flexShrink: 0 }}>
+                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', maxWidth: '100%', minWidth: 0 }}>
                   <button type="button" className={styles.btnPrimary} onClick={handleOpenNewClientModal} style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
                     <IconPlus size={15} /> Add New Admin / Client
                   </button>

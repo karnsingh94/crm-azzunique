@@ -78,11 +78,13 @@ export function requireCompanyUser(req, res, next) {
 }
 
 /**
- * Guard restricted to the tenant's Company Admin account
+ * Guard restricted to the tenant's Company Admin account (or Super Admin)
  */
 export function requireCompanyAdmin(req, res, next) {
   requireAuth(req, res, () => {
-    if (req.user?.role !== 'COMPANY_ADMIN' || !req.user.companyId) {
+    const isSuperAdmin = req.user?.role === 'SUPER_ADMIN';
+    const isCompanyAdmin = req.user?.role === 'COMPANY_ADMIN' && req.user.companyId;
+    if (!isSuperAdmin && !isCompanyAdmin) {
       return res.status(403).json({
         success: false,
         message: 'Access denied: Company Admin privileges required.',
@@ -95,6 +97,7 @@ export function requireCompanyAdmin(req, res, next) {
 
 export function requireServiceTeamPermission(permission) {
   return async (req, res, next) => {
+    if (req.user?.role === 'SUPER_ADMIN') return next();
     if (req.user?.role === 'COMPANY_ADMIN' && req.user.companyId) return next();
     if (!['DEPARTMENT_HEAD', 'SERVICE_HEAD', 'TEAM_LEADER'].includes(req.user?.role) || !req.user.userId || !req.user.companyId) {
       return res.status(403).json({
@@ -149,6 +152,7 @@ export function requireServiceTeamPermission(permission) {
  */
 export function requireTeamStructureManager(req, res, next) {
   requireAuth(req, res, async () => {
+    if (req.user?.role === 'SUPER_ADMIN') return next();
     if (req.user?.role === 'COMPANY_ADMIN' && req.user.companyId) return next();
 
     if (!['DEPARTMENT_HEAD', 'SERVICE_HEAD'].includes(req.user?.role) || !req.user.userId || !req.user.companyId) {

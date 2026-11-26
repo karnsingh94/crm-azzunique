@@ -127,6 +127,11 @@ router.get(
   requireServiceTeamPermission(['manageMembers', 'manageTeams', 'assignWork', 'updateWork']),
   departmentController.getServiceTeams
 );
+router.get(
+  '/companies/:companyId/services/:serviceCode/teams/:teamId',
+  requireServiceTeamPermission(['manageMembers', 'manageTeams', 'assignWork', 'updateWork']),
+  departmentController.getServiceTeam
+);
 router.post(
   '/companies/:companyId/services/:serviceCode/teams',
   requireTeamStructureManager,

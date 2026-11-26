@@ -40,6 +40,7 @@ export default function CrmModule({ activeCompany, showToast, initialSubTab, has
   const router = useRouter();
   const pathname = usePathname();
   const { currentUser } = useCompanyAuth();
+  const isCompanyAdmin = currentUser?.role === 'COMPANY_ADMIN' || currentUser?.role === 'SUPER_ADMIN' || currentUser?.isCompanyAdmin === true;
 
   // Permission resolution for module boundary isolation
   const { hasModuleAccess: checkCompanyModuleAccess } = useCompanyAccess(activeCompany);
@@ -146,7 +147,7 @@ export default function CrmModule({ activeCompany, showToast, initialSubTab, has
       if (pathname.includes('/crm/customers')) resolved = 'customers';
       else if (pathname.includes('/crm/contacts')) resolved = 'contacts';
       else if (pathname.includes('/crm/opportunities')) resolved = 'opportunities';
-      else if (pathname.includes('/departments')) resolved = 'departments';
+      else if (pathname.includes('/departments') && isCompanyAdmin) resolved = 'departments';
       if (activeTab !== resolved) {
         setActiveTab(resolved);
       }
@@ -1902,7 +1903,7 @@ export default function CrmModule({ activeCompany, showToast, initialSubTab, has
           </button>
         )}
 
-        {currentUser?.role !== 'EMPLOYEE' && (
+        {isCompanyAdmin && (
           <button
             type="button"
             onClick={() => handleTabChange('departments')}
@@ -1931,7 +1932,7 @@ export default function CrmModule({ activeCompany, showToast, initialSubTab, has
       {/* ------------------------------------------------------------- */}
       {/* DEPARTMENTS TAB CONTENT */}
       {/* ------------------------------------------------------------- */}
-      {activeTab === 'departments' && (
+      {activeTab === 'departments' && isCompanyAdmin && (
         <ServiceDepartments
           activeCompany={activeCompany}
           serviceCode="crm_sales"

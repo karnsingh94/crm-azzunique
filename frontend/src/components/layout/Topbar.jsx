@@ -160,18 +160,6 @@ export default function Topbar({
           type="button"
           className={styles.topbarIconButton}
           onClick={onToggleSidebar}
-          style={{
-            padding: '0.45rem',
-            borderRadius: '6px',
-            color: '#64748b',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: '#f8fafc',
-            border: '1px solid #e2e8f0',
-            cursor: 'pointer',
-            flexShrink: 0,
-          }}
           aria-label="Toggle navigation sidebar"
         >
           <IconMenu size={18} />
@@ -179,44 +167,15 @@ export default function Topbar({
 
         {/* Global Search Bar */}
         <div className={styles.topbarSearchWrap}>
-          <span
-            style={{
-              position: 'absolute',
-              left: '12px',
-              color: '#94a3b8',
-              display: 'flex',
-              alignItems: 'center',
-              pointerEvents: 'none',
-            }}
-          >
+          <span className={styles.topbarSearchIcon}>
             <IconSearch size={16} />
           </span>
           <input
             type="text"
+            className={styles.topbarSearchInput}
             placeholder="Search leads, orders, inventory, products..."
             value={searchQuery || ''}
             onChange={(e) => onSearchChange && onSearchChange(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '0.55rem 1rem 0.55rem 2.25rem',
-              borderRadius: '9999px',
-              border: '1px solid #e2e8f0',
-              backgroundColor: '#f8fafc',
-              fontSize: '0.84rem',
-              color: '#0f172a',
-              outline: 'none',
-              transition: 'all 0.2s ease',
-            }}
-            onFocus={(e) => {
-              e.target.style.borderColor = brandColor;
-              e.target.style.backgroundColor = '#ffffff';
-              e.target.style.boxShadow = `0 0 0 3px ${brandGlow}`;
-            }}
-            onBlur={(e) => {
-              e.target.style.borderColor = '#e2e8f0';
-              e.target.style.backgroundColor = '#f8fafc';
-              e.target.style.boxShadow = 'none';
-            }}
           />
         </div>
       </div>
@@ -227,21 +186,9 @@ export default function Topbar({
         <div style={{ position: 'relative' }} ref={notificationRef}>
           <button
             type="button"
+            className={styles.topbarNotificationBtn}
             onClick={() => setShowNotifications(prev => !prev)}
-            style={{
-              position: 'relative',
-              width: '38px',
-              height: '38px',
-              borderRadius: '50%',
-              border: '1px solid #e2e8f0',
-              backgroundColor: showNotifications ? `${brandColor}10` : '#f8fafc',
-              color: showNotifications ? brandColor : '#475569',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-            }}
+            style={showNotifications ? { color: brandColor, borderColor: brandColor } : undefined}
             aria-label="View notifications"
             title="Notifications & Approval Alerts"
           >
@@ -409,19 +356,8 @@ export default function Topbar({
           <div style={{ position: 'relative' }} ref={companyRef}>
             <button
               type="button"
+              className={styles.companySwitcherBtn}
               onClick={() => setShowCompanyMenu(prev => !prev)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                padding: '0.45rem 0.85rem',
-                borderRadius: '8px',
-                border: '1px solid #e2e8f0',
-                backgroundColor: '#f8fafc',
-                fontSize: '0.82rem',
-                fontWeight: 700,
-                color: '#334155',
-              }}
               title="Switch Tenant Company"
             >
               <IconBuilding size={16} style={{ color: brandColor }} />
@@ -439,10 +375,7 @@ export default function Topbar({
                   top: 'calc(100% + 6px)',
                   right: 0,
                   width: '260px',
-                  background: '#ffffff',
-                  border: '1px solid #e2e8f0',
                   borderRadius: '12px',
-                  boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)',
                   padding: '0.5rem',
                   zIndex: 100,
                 }}
@@ -481,14 +414,14 @@ export default function Topbar({
                         alignItems: 'center',
                         justifyContent: 'space-between',
                         backgroundColor: isSelected ? `${brandColor}14` : 'transparent',
-                        color: isSelected ? brandColor : '#334155',
+                        color: isSelected ? brandColor : undefined,
                         fontWeight: isSelected ? 700 : 500,
                         fontSize: '0.82rem',
                       }}
                     >
                       <div>
                         <div>{c.organizationName}</div>
-                        <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{c.name}</div>
+                        <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>{c.name}</div>
                       </div>
                       {isSelected && <span style={{ color: brandColor, fontWeight: 800 }}>✓</span>}
                     </button>
@@ -501,18 +434,6 @@ export default function Topbar({
           /* Normal single-company experience: static verified company name badge (no dropdown/chevron) */
           <div
             className={styles.companyContextBadge}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              padding: '0.45rem 0.85rem',
-              borderRadius: '8px',
-              border: '1px solid #e2e8f0',
-              backgroundColor: '#f8fafc',
-              fontSize: '0.82rem',
-              fontWeight: 700,
-              color: '#1e293b',
-            }}
             title={`Active Tenant: ${activeCompany.organizationName}`}
           >
             <IconBuilding size={16} style={{ color: brandColor }} />
@@ -528,15 +449,6 @@ export default function Topbar({
             type="button"
             className={styles.profileTrigger}
             onClick={() => setShowProfileMenu(prev => !prev)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.65rem',
-              padding: '0.35rem 0.65rem 0.35rem 0.45rem',
-              borderRadius: '9999px',
-              border: '1px solid #e2e8f0',
-              backgroundColor: '#ffffff',
-            }}
             aria-label={`${displayRole} user profile`}
           >
             <div
@@ -557,10 +469,10 @@ export default function Topbar({
               {userInitials}
             </div>
             <div className={styles.profileMetaWrap}>
-              <span className={styles.profileName} style={{ fontSize: '0.82rem', fontWeight: 700, color: '#0f172a', lineHeight: 1.2 }}>
+              <span className={styles.profileName}>
                 {displayName}
               </span>
-              <span className={styles.profileRole} style={{ fontSize: '0.7rem', color: '#64748b' }}>
+              <span className={styles.profileRole}>
                 {displayRole}
               </span>
             </div>

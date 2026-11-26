@@ -50,7 +50,7 @@ function serviceError(message, statusCode, code) {
 }
 
 function assertTeamStructureManager(actor) {
-  if (actor?.role === 'COMPANY_ADMIN' || DEPARTMENT_HEAD_ROLES.includes(actor?.role)) return;
+  if (actor?.role === 'COMPANY_ADMIN' || actor?.role === 'SUPER_ADMIN' || DEPARTMENT_HEAD_ROLES.includes(actor?.role)) return;
   throw serviceError(
     'Only the Company Admin or Department Head can create, edit, activate, deactivate, or configure teams.',
     403,
@@ -1213,7 +1213,9 @@ export const departmentService = {
     }
 
     let existingTeam = null;
-    if (actor?.role !== 'COMPANY_ADMIN') {
+    const isCompanyAdmin = actor?.role === 'COMPANY_ADMIN' || actor?.role === 'SUPER_ADMIN';
+
+    if (!isCompanyAdmin && !teamId) {
       const employee = await prisma.companyEmployee.findFirst({
         where: {
           id: String(actor?.userId || ''),
@@ -1233,9 +1235,28 @@ export const departmentService = {
         where: { id: employee.teamId, companyId: cid, serviceId: service.id },
       });
     } else if (teamId) {
-      existingTeam = await prisma.companyServiceTeam.findFirst({
-        where: { id: parseEntityId(teamId, 'Team'), companyId: cid, serviceId: service.id },
-      });
+      const isIdFormat = /^[0-9a-fA-F-]{16,36}$|^\d+$/.test(String(teamId));
+      if (isIdFormat) {
+        try {
+          existingTeam = await prisma.companyServiceTeam.findFirst({
+            where: { id: parseEntityId(teamId, 'Team'), companyId: cid, serviceId: service.id },
+          });
+        } catch {
+          // not standard entity id, fall through to slug/name match
+        }
+      }
+      if (!existingTeam) {
+        const allTeams = await prisma.companyServiceTeam.findMany({
+          where: { companyId: cid, serviceId: service.id },
+        });
+        const cleanSlug = String(teamId).toLowerCase().replace(/[-_]/g, ' ');
+        const hyphenatedSlug = String(teamId).toLowerCase();
+        existingTeam = allTeams.find((t) =>
+          t.name.toLowerCase() === cleanSlug ||
+          t.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') === hyphenatedSlug ||
+          t.id.toString() === String(teamId)
+        );
+      }
     } else {
       throw serviceError('Choose a team for this service.', 400);
     }
