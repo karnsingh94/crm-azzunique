@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../../lib/api';
+import { AnimatedModal } from '../ui/Modal';
 
 const STATUS_LABELS = {
   TODO: 'To Do',
@@ -177,17 +178,16 @@ export default function ServiceWorkBoard({
         )}
       </div>
 
-      {showCreate && (
-        <div
-          className="resp-modal-backdrop"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              setShowCreate(false);
-              setDraft(EMPTY_WORK);
-            }
-          }}
-        >
-          <div className="resp-modal-card" style={{ maxWidth: '600px', maxHeight: '90vh' }}>
+      <AnimatedModal
+        isOpen={showCreate}
+        onClose={() => {
+          setShowCreate(false);
+          setDraft(EMPTY_WORK);
+        }}
+        maxWidth="600px"
+      >
+        {({ close }) => (
+          <>
             <div className="resp-modal-header" style={{ padding: '1.25rem 1.5rem' }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>
@@ -199,10 +199,7 @@ export default function ServiceWorkBoard({
               </div>
               <button
                 type="button"
-                onClick={() => {
-                  setShowCreate(false);
-                  setDraft(EMPTY_WORK);
-                }}
+                onClick={close}
                 style={{
                   background: 'none',
                   border: 'none',
@@ -298,10 +295,7 @@ export default function ServiceWorkBoard({
               <div className="resp-modal-footer" style={{ padding: '1rem 1.5rem' }}>
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowCreate(false);
-                    setDraft(EMPTY_WORK);
-                  }}
+                  onClick={close}
                   style={{
                     padding: '0.58rem 1.15rem',
                     border: '1px solid #cbd5e1',
@@ -332,9 +326,9 @@ export default function ServiceWorkBoard({
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </AnimatedModal>
 
       {isLoading ? (
         <p style={{ margin: 0, color: '#64748b' }}>Loading team work…</p>

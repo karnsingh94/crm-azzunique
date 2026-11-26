@@ -26,51 +26,70 @@
   --color-violet-950: #1c0244;
 
   /* Secondary & Neutral Text */
-  --text-main: #18181b;               /* Deep Zinc-900 */
-  --text-secondary: #52525b;          /* Zinc-600 */
-  --text-muted: #71717a;              /* Zinc-500 */
-  --text-light: #a1a1aa;              /* Zinc-400 */
+  --text-main: #18181b;
+  /* Deep Zinc-900 */
+  --text-secondary: #52525b;
+  /* Zinc-600 */
+  --text-muted: #71717a;
+  /* Zinc-500 */
+  --text-light: #a1a1aa;
+  /* Zinc-400 */
 
   /* Surfaces & Backgrounds */
-  --bg-body: #f8fafc;                 /* Clean Light Background */
-  --bg-surface: #ffffff;              /* Crisp White */
+  --bg-body: #f8fafc;
+  /* Clean Light Background */
+  --bg-surface: #ffffff;
+  /* Crisp White */
   --bg-card: #ffffff;
-  --bg-subtle: #f4f4f5;               /* Zinc-100 */
+  --bg-subtle: #f4f4f5;
+  /* Zinc-100 */
   --bg-hover: #f4f4f5;
   --card-selected-bg: #faf5ff;
   --header-tint-bg: #fcfaff;
-  --border-subtle: #e4e4e7;           /* Zinc-200 */
-  --border-light: #f1f5f9;            /* Slate-100 */
+  --border-subtle: #e4e4e7;
+  /* Zinc-200 */
+  --border-light: #f1f5f9;
+  /* Slate-100 */
 
   /* Dark Zinc Sidebar Tokens (Reference: zinc-900) */
-  --sidebar-bg: #18181b;              /* Dark Zinc-900 */
-  --sidebar-card: #27272a;            /* Zinc-800 */
+  --sidebar-bg: #18181b;
+  /* Dark Zinc-900 */
+  --sidebar-card: #27272a;
+  /* Zinc-800 */
   --sidebar-hover: #27272a;
-  --sidebar-border: #27272a;          /* Zinc-800 */
-  --sidebar-text: #e4e4e7;            /* Zinc-200 */
-  --sidebar-text-muted: #a1a1aa;      /* Zinc-400 */
-  --sidebar-active-bg: #7f22fe;       /* Violet-600 */
+  --sidebar-border: #27272a;
+  /* Zinc-800 */
+  --sidebar-text: #e4e4e7;
+  /* Zinc-200 */
+  --sidebar-text-muted: #a1a1aa;
+  /* Zinc-400 */
+  --sidebar-active-bg: #7f22fe;
+  /* Violet-600 */
   --sidebar-active-text: #ffffff;
   --sidebar-active-parent: rgba(127, 34, 254, 0.12);
   --sidebar-active-border: #7f22fe;
 
   /* Status Colors */
-  --success: #10b981;                 /* Emerald-500 */
+  --success: #10b981;
+  /* Emerald-500 */
   --success-light: #ecfdf5;
   --success-border: #a7f3d0;
   --success-text: #065f46;
 
-  --warning: #f59e0b;                 /* Amber-500 */
+  --warning: #f59e0b;
+  /* Amber-500 */
   --warning-light: #fffbeb;
   --warning-border: #fde68a;
   --warning-text: #92400e;
 
-  --danger: #ef4444;                  /* Red-500 */
+  --danger: #ef4444;
+  /* Red-500 */
   --danger-light: #fef2f2;
   --danger-border: #fecaca;
   --danger-text: #991b1b;
 
-  --info: #0284c7;                    /* Sky-600 */
+  --info: #0284c7;
+  /* Sky-600 */
   --info-light: #f0f9ff;
   --info-border: #bae6fd;
   --info-text: #0369a1;
@@ -104,7 +123,8 @@
   scrollbar-color: #cbd5e1 transparent;
 }
 
-html, body {
+html,
+body {
   min-height: 100vh;
   max-width: 100%;
   overflow-x: clip;
@@ -126,7 +146,9 @@ button:active {
   transform: scale(0.98);
 }
 
-input, select, textarea {
+input,
+select,
+textarea {
   font-family: inherit;
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-fast);
 }
@@ -151,7 +173,8 @@ textarea:focus {
   background-color: #ffffff !important;
 }
 
-input[type="checkbox"], input[type="radio"] {
+input[type="checkbox"],
+input[type="radio"] {
   accent-color: #7f22fe;
   cursor: pointer;
 }
@@ -181,7 +204,13 @@ textarea::placeholder {
 }
 
 /* Ensure all interactive controls show pointer */
-a, button, select, label, input[type="button"], input[type="submit"], [role="button"] {
+a,
+button,
+select,
+label,
+input[type="button"],
+input[type="submit"],
+[role="button"] {
   cursor: pointer;
 }
 
@@ -388,6 +417,7 @@ a, button, select, label, input[type="button"], input[type="submit"], [role="but
     opacity: 0;
     transform: scale(0.95) translateY(8px);
   }
+
   to {
     opacity: 1;
     transform: scale(1) translateY(0);
@@ -395,8 +425,13 @@ a, button, select, label, input[type="button"], input[type="submit"], [role="but
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes modalSlideUp {
@@ -404,6 +439,7 @@ a, button, select, label, input[type="button"], input[type="submit"], [role="but
     opacity: 0;
     transform: translateY(18px) scale(0.98);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -411,7 +447,9 @@ a, button, select, label, input[type="button"], input[type="submit"], [role="but
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Legacy Card Class compatibility */
@@ -429,7 +467,10 @@ a, button, select, label, input[type="button"], input[type="submit"], [role="but
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
@@ -784,7 +825,12 @@ a, button, select, label, input[type="button"], input[type="submit"], [role="but
   align-items: center;
   justify-content: center;
   padding: 1.25rem;
-  animation: fadeIn 0.18s ease-out;
+  animation: fadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.resp-modal-backdrop.closing {
+  animation: fadeOut 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  pointer-events: none;
 }
 
 .resp-modal-card {
@@ -797,7 +843,32 @@ a, button, select, label, input[type="button"], input[type="submit"], [role="but
   display: flex;
   flex-direction: column;
   max-height: 90vh;
-  animation: modalSlideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: modalSlideUp 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.resp-modal-card.closing {
+  animation: modalSlideDown 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  pointer-events: none;
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes modalSlideDown {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(20px) scale(0.97);
+  }
 }
 
 [data-theme="dark"] .resp-modal-card {
@@ -839,6 +910,73 @@ a, button, select, label, input[type="button"], input[type="submit"], [role="but
   pointer-events: none;
 }
 
+.resp-toast-item {
+  pointer-events: auto;
+  border-radius: 10px;
+  padding: 12px 16px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  animation: fadeInSlide 0.25s ease-out;
+}
+
+.resp-toast-item.success {
+  background: #ecfdf5;
+  border: 1px solid #10b981;
+  border-left: 5px solid #10b981;
+  color: #065f46;
+}
+
+.resp-toast-item.danger {
+  background: #fef2f2;
+  border: 1px solid #ef4444;
+  border-left: 5px solid #ef4444;
+  color: #991b1b;
+}
+
+.resp-toast-item.warning {
+  background: #fffbeb;
+  border: 1px solid #f59e0b;
+  border-left: 5px solid #f59e0b;
+  color: #92400e;
+}
+
+.resp-toast-item.info {
+  background: #f5f0ff;
+  border: 1px solid #7f22fe;
+  border-left: 5px solid #7f22fe;
+  color: #480b95;
+}
+
+[data-theme="dark"] .resp-toast-item.success {
+  background: #062b1e !important;
+  border-color: #059669 !important;
+  border-left-color: #10b981 !important;
+  color: #a7f3d0 !important;
+}
+
+[data-theme="dark"] .resp-toast-item.danger {
+  background: #2b1111 !important;
+  border-color: #dc2626 !important;
+  border-left-color: #ef4444 !important;
+  color: #fca5a5 !important;
+}
+
+[data-theme="dark"] .resp-toast-item.warning {
+  background: #2d2008 !important;
+  border-color: #d97706 !important;
+  border-left-color: #f59e0b !important;
+  color: #fde68a !important;
+}
+
+[data-theme="dark"] .resp-toast-item.info {
+  background: #1c1432 !important;
+  border-color: #6d28d9 !important;
+  border-left-color: #7f22fe !important;
+  color: #ddd6fe !important;
+}
+
 @media (max-width: 900px) {
   .resp-grid-4 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -852,6 +990,7 @@ a, button, select, label, input[type="button"], input[type="submit"], [role="but
 }
 
 @media (max-width: 640px) {
+
   .resp-grid-2,
   .resp-grid-3,
   .resp-grid-4,

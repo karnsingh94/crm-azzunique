@@ -108,19 +108,21 @@ export async function apiRequest(endpoint, options = {}) {
     return inFlightGetRequests.get(requestKey);
   }
 
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
+
   const defaultHeaders = {
     'Content-Type': 'application/json',
     Accept: 'application/json',
     ...(options.headers || {}),
   };
 
-  if (typeof FormData !== 'undefined' && options.body instanceof FormData) {
+  if (isFormData) {
     delete defaultHeaders['Content-Type'];
   }
 
   // Coordinated timeout and external signal handling
   const controller = new AbortController();
-  const timeoutMs = options.timeout || 6000;
+  const timeoutMs = options.timeout || (isFormData ? 30000 : 8000);
   let didTimeout = false;
 
   const timeoutId = setTimeout(() => {
@@ -203,11 +205,19 @@ export async function apiRequest(endpoint, options = {}) {
   return fetchPromise;
 }
 
+function prepareRequestBody(body) {
+  if (body === undefined || body === null) return undefined;
+  if (typeof FormData !== 'undefined' && body instanceof FormData) {
+    return body;
+  }
+  return typeof body === 'string' ? body : JSON.stringify(body);
+}
+
 export const api = {
   get: (endpoint, options) => apiRequest(endpoint, { method: 'GET', ...options }),
-  post: (endpoint, body, options) => apiRequest(endpoint, { method: 'POST', body: JSON.stringify(body), ...options }),
-  put: (endpoint, body, options) => apiRequest(endpoint, { method: 'PUT', body: JSON.stringify(body), ...options }),
-  patch: (endpoint, body, options) => apiRequest(endpoint, { method: 'PATCH', body: body ? JSON.stringify(body) : undefined, ...options }),
+  post: (endpoint, body, options) => apiRequest(endpoint, { method: 'POST', body: prepareRequestBody(body), ...options }),
+  put: (endpoint, body, options) => apiRequest(endpoint, { method: 'PUT', body: prepareRequestBody(body), ...options }),
+  patch: (endpoint, body, options) => apiRequest(endpoint, { method: 'PATCH', body: prepareRequestBody(body), ...options }),
   delete: (endpoint, options) => apiRequest(endpoint, { method: 'DELETE', ...options }),
   invalidateCache: invalidateApiCache,
 };
