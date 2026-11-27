@@ -249,15 +249,22 @@ async loginCompanyUser(
   const cleanEmail = email.trim().toLowerCase();
   const expiresInSeconds = sessionExpiry(rememberMe);
 
-  // Track actual database failures separately from invalid credentials.
   let databaseLookupFailed = false;
+
+  // Track each authentication independently.
+  const authStatus = {
+    superAdmin: false,
+    companyAdmin: false,
+    employee: false,
+    bootstrap: false,
+  };
 
   // =========================================================
   // 0. SUPER ADMIN LOGIN
   // =========================================================
 
   let superAdmin = null;
-  let isBootstrapMatchSuperAdmin;
+
   try {
     superAdmin = await prisma.superAdmin.findUnique({
       where: { email: cleanEmail },
@@ -283,16 +290,21 @@ async loginCompanyUser(
         PASSWORD_OVERRIDES.get(cleanEmail)
       );
 
-    const databasePasswordMatch = comparePassword(
-      password,
+    const databasePasswordMatch =
       superAdmin.passwordHash
-    );
+        ? comparePassword(password, superAdmin.passwordHash)
+        : false;
 
-     isBootstrapMatchSuperAdmin =
+    const isBootstrapMatchSuperAdmin =
       cleanEmail === BOOTSTRAP_SUPER_ADMIN.email.toLowerCase() &&
       password === BOOTSTRAP_SUPER_ADMIN.password;
 
-    if (overrideMatch || databasePasswordMatch || isBootstrapMatchSuperAdmin) {
+    authStatus.superAdmin =
+      overrideMatch ||
+      databasePasswordMatch ||
+      isBootstrapMatchSuperAdmin;
+
+    if (authStatus.superAdmin) {
       const userObj = {
         id: superAdmin.id.toString(),
         name: superAdmin.name,
@@ -300,12 +312,14 @@ async loginCompanyUser(
         role: 'SUPER_ADMIN',
       };
 
-      // Update last login and repair bootstrap password hash if needed.
       const updateData = {
         lastLoginAt: new Date(),
       };
 
-      if (!databasePasswordMatch && isBootstrapMatchSuperAdmin) {
+      if (
+        !databasePasswordMatch &&
+        isBootstrapMatchSuperAdmin
+      ) {
         updateData.passwordHash = hashPassword(password);
       }
 
@@ -353,7 +367,8 @@ async loginCompanyUser(
     cleanEmail === BOOTSTRAP_SUPER_ADMIN.email.toLowerCase() &&
     password === BOOTSTRAP_SUPER_ADMIN.password
   ) {
-    // Bootstrap Super Admin when database record does not exist.
+    // Bootstrap Super Admin when DB record does not exist.
+
     const userObj = {
       id: BOOTSTRAP_SUPER_ADMIN.id,
       name: BOOTSTRAP_SUPER_ADMIN.name,
@@ -386,14 +401,15 @@ async loginCompanyUser(
   // =========================================================
 
   let clientAdmin = null;
-  let isPasswordValidClientAdmin;
 
   try {
     clientAdmin = await prisma.clientAdmin.findFirst({
       where: {
         email: cleanEmail,
         deletedAt: null,
-        ...(companyId ? { id: String(companyId) } : {}),
+        ...(companyId
+          ? { id: String(companyId) }
+          : {}),
       },
       include: clientAccessInclude,
     });
@@ -412,14 +428,22 @@ async loginCompanyUser(
       throw error;
     }
 
-     isPasswordValidClientAdmin = PASSWORD_OVERRIDES.has(cleanEmail)
-      ? comparePassword(
-          password,
-          PASSWORD_OVERRIDES.get(cleanEmail)
-        )
-      : comparePassword(password, clientAdmin.passwordHash);
+    const overrideMatch =
+      PASSWORD_OVERRIDES.has(cleanEmail) &&
+      comparePassword(
+        password,
+        PASSWORD_OVERRIDES.get(cleanEmail)
+      );
 
-    if (isPasswordValidClientAdmin) {
+    const databasePasswordMatch =
+      clientAdmin.passwordHash
+        ? comparePassword(password, clientAdmin.passwordHash)
+        : false;
+
+    authStatus.companyAdmin =
+      overrideMatch || databasePasswordMatch;
+
+    if (authStatus.companyAdmin) {
       const formatted = formatClient(clientAdmin);
 
       const userObj = {
@@ -434,15 +458,18 @@ async loginCompanyUser(
         access: formatted.access,
       };
 
-      const token = signToken({
-        userId: userObj.id,
-        name: userObj.name,
-        email: userObj.email,
-        role: 'COMPANY_ADMIN',
-        companyId: userObj.companyId,
-        organizationName: userObj.organizationName,
-        type: 'COMPANY_USER',
-      });
+      const token = signToken(
+        {
+          userId: userObj.id,
+          name: userObj.name,
+          email: userObj.email,
+          role: 'COMPANY_ADMIN',
+          companyId: userObj.companyId,
+          organizationName: userObj.organizationName,
+          type: 'COMPANY_USER',
+        },
+        expiresInSeconds
+      );
 
       await auditService.logAudit({
         action: 'LOGIN',
@@ -455,6 +482,7 @@ async loginCompanyUser(
 
       return {
         token,
+        expiresInSeconds,
         user: userObj,
         redirectUrl: '/dashboard',
         targetOrigin: env.clientUrl,
@@ -467,7 +495,6 @@ async loginCompanyUser(
   // =========================================================
 
   let employee = null;
-  let isEmployeeValid;
 
   try {
     employee = await prisma.companyEmployee.findFirst({
@@ -515,27 +542,28 @@ async loginCompanyUser(
       throw error;
     }
 
-    // Individual password, override, or legacy company password.
-    isEmployeeValid = false;
+    let passwordMatch = false;
 
     if (PASSWORD_OVERRIDES.has(cleanEmail)) {
-      isEmployeeValid = comparePassword(
+      passwordMatch = comparePassword(
         password,
         PASSWORD_OVERRIDES.get(cleanEmail)
       );
     } else if (employee.passwordHash) {
-      isEmployeeValid = comparePassword(
+      passwordMatch = comparePassword(
         password,
         employee.passwordHash
       );
-    } else {
-      isEmployeeValid = comparePassword(
+    } else if (employee.clientAdmin.passwordHash) {
+      passwordMatch = comparePassword(
         password,
         employee.clientAdmin.passwordHash
       );
     }
 
-    if (isEmployeeValid) {
+    authStatus.employee = passwordMatch;
+
+    if (authStatus.employee) {
       const resolvedRole = getEmployeeAccessRole(employee);
 
       const service =
@@ -598,19 +626,22 @@ async loginCompanyUser(
         access: scopedAccess,
       };
 
-      const token = signToken({
-        userId: userObj.id,
-        name: userObj.name,
-        email: userObj.email,
-        role: resolvedRole,
-        companyId: userObj.companyId,
-        departmentId: userObj.departmentId,
-        teamId: userObj.teamId,
-        serviceId: userObj.serviceId,
-        serviceCode: userObj.serviceCode,
-        organizationName: userObj.organizationName,
-        type: 'COMPANY_USER',
-      });
+      const token = signToken(
+        {
+          userId: userObj.id,
+          name: userObj.name,
+          email: userObj.email,
+          role: resolvedRole,
+          companyId: userObj.companyId,
+          departmentId: userObj.departmentId,
+          teamId: userObj.teamId,
+          serviceId: userObj.serviceId,
+          serviceCode: userObj.serviceCode,
+          organizationName: userObj.organizationName,
+          type: 'COMPANY_USER',
+        },
+        expiresInSeconds
+      );
 
       const loginAudit = auditService.logAudit({
         action: 'LOGIN',
@@ -632,15 +663,14 @@ async loginCompanyUser(
         await loginAudit;
       }
 
-      const redirectUrl =
-        resolvedRole === 'EMPLOYEE'
-          ? '/employee/dashboard'
-          : '/dashboard';
-
       return {
         token,
+        expiresInSeconds,
         user: userObj,
-        redirectUrl,
+        redirectUrl:
+          resolvedRole === 'EMPLOYEE'
+            ? '/employee/dashboard'
+            : '/dashboard',
         targetOrigin: env.clientUrl,
       };
     }
@@ -656,61 +686,74 @@ async loginCompanyUser(
       (!companyId || u.companyId === String(companyId))
   );
 
-  let isFallbackValid = false;
-
   if (fallbackUser) {
+    let fallbackPasswordMatch = false;
+
     if (PASSWORD_OVERRIDES.has(cleanEmail)) {
-      isFallbackValid = comparePassword(
+      fallbackPasswordMatch = comparePassword(
         password,
         PASSWORD_OVERRIDES.get(cleanEmail)
       );
     } else {
-      isFallbackValid = fallbackUser.password === password;
+      fallbackPasswordMatch =
+        fallbackUser.password === password;
     }
-  }
 
-  if (fallbackUser && isFallbackValid) {
-    const userObj = {
-      id: fallbackUser.id,
-      name: fallbackUser.name,
-      email: fallbackUser.email,
-      role: fallbackUser.role,
-      companyId: fallbackUser.companyId,
-      departmentId: fallbackUser.departmentId || null,
-      departmentName: fallbackUser.departmentName || null,
-      organizationName: fallbackUser.organizationName,
-      access: {
-        services: [],
-      },
-    };
+    authStatus.bootstrap = fallbackPasswordMatch;
 
-    const token = signToken({
-      userId: userObj.id,
-      name: userObj.name,
-      email: userObj.email,
-      role: userObj.role,
-      companyId: userObj.companyId,
-      departmentId: userObj.departmentId,
-      organizationName: userObj.organizationName,
-      type: 'COMPANY_USER',
-    });
+    if (authStatus.bootstrap) {
+      const userObj = {
+        id: fallbackUser.id,
+        name: fallbackUser.name,
+        email: fallbackUser.email,
+        role: fallbackUser.role,
+        companyId: fallbackUser.companyId,
+        departmentId: fallbackUser.departmentId || null,
+        departmentName: fallbackUser.departmentName || null,
+        organizationName: fallbackUser.organizationName,
+        access: {
+          services: [],
+        },
+      };
 
-    return {
-      token,
-      user: userObj,
-      redirectUrl:
-        userObj.role === 'EMPLOYEE'
-          ? '/employee/dashboard'
-          : '/dashboard',
-      targetOrigin: env.clientUrl,
-    };
+      const token = signToken(
+        {
+          userId: userObj.id,
+          name: userObj.name,
+          email: userObj.email,
+          role: userObj.role,
+          companyId: userObj.companyId,
+          departmentId: userObj.departmentId,
+          organizationName: userObj.organizationName,
+          type: 'COMPANY_USER',
+        },
+        expiresInSeconds
+      );
+
+      return {
+        token,
+        expiresInSeconds,
+        user: userObj,
+        redirectUrl:
+          userObj.role === 'EMPLOYEE'
+            ? '/employee/dashboard'
+            : '/dashboard',
+        targetOrigin: env.clientUrl,
+      };
+    }
   }
 
   // =========================================================
   // 4. FINAL AUTHENTICATION VALIDATION
   // =========================================================
 
-  // Do not report database failures as invalid credentials.
+  logger.info('Login authentication result', {
+    email: cleanEmail,
+    companyId: companyId || null,
+    authStatus,
+    databaseLookupFailed,
+  });
+
   if (databaseLookupFailed) {
     const error = new Error(
       'Unable to verify your account right now. Please try again.'
@@ -720,13 +763,10 @@ async loginCompanyUser(
     error.code = 'AUTHENTICATION_SERVICE_UNAVAILABLE';
 
     throw error;
-  }  
+  }
 
-  // All database lookups completed successfully, but no
-  // matching account authenticated.
-  
-  if(!isBootstrapMatchSuperAdmin || !isPasswordValidClientAdmin || !isEmployeeValid
-  ) {const error = new Error(
+  // No account successfully authenticated.
+  const error = new Error(
     'Invalid email or password. Please check your credentials.'
   );
 
@@ -734,7 +774,7 @@ async loginCompanyUser(
   error.code = 'INVALID_CREDENTIALS';
 
   throw error;
-}},
+},
 
 
   /**
