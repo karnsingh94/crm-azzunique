@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { api } from '../lib/api';
+import { api, API_BASE, getApiBaseUrl } from '../lib/api';
 import {
   clearStoredSession,
   getCachedStoredUser,

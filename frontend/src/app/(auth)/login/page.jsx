@@ -3,18 +3,9 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { clearStoredSession, getStoredToken, rememberVerifiedSession, verifyCurrentSession, getApiBase } from '@/lib/auth';
+import { clearStoredSession, getStoredToken, rememberVerifiedSession, verifyCurrentSession } from '@/lib/auth';
+import { getApiBaseUrl } from '@/lib/api';
 import { useCompanyAuthContext } from '@/context/CompanyAuthContext';
-
-function getApiBaseUrl() {
-  if (typeof window !== 'undefined') {
-    const host = window.location.hostname.toLowerCase();
-    if (host === 'crm.azzunique.in' || host.endsWith('.azzunique.in')) {
-      return `${window.location.origin}/api`;
-    }
-  }
-  return process.env.NEXT_PUBLIC_API_URL || 'https://crm.azzunique.in/api';
-}
 
 const LOGIN_RETRY_DELAYS_MS = [400, 1000, 2200, 4000];
 const LOGIN_REQUEST_TIMEOUT_MS = 10000;

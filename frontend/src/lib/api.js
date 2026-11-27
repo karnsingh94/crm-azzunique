@@ -8,14 +8,40 @@ import { clearStoredSession, getStoredToken } from './auth';
 export function getApiBaseUrl() {
   if (typeof window !== 'undefined') {
     const host = window.location.hostname.toLowerCase();
-    if (host === 'crm.azzunique.in' || host.endsWith('.azzunique.in')) {
-      return `${window.location.origin}/api`;
+    // In browser: if local development on localhost/loopback
+    if (host === 'localhost' || host === '127.0.0.1' || host === '[::1]') {
+      return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
     }
+    // For ANY live/production environment (crm.azzunique.in, server IP, or custom domain):
+    // Always use the same-origin reverse-proxied /api endpoint.
+    // This is 100% resilient and NEVER attempts to call localhost on client devices!
+    return `${window.location.origin}/api`;
   }
+  // During SSR / build-time pre-rendering:
   return process.env.NEXT_PUBLIC_API_URL || 'https://crm.azzunique.in/api';
 }
 
-export const API_BASE = getApiBaseUrl();
+// Dynamic proxy string object so template literals (${API_BASE}) always evaluate getApiBaseUrl() at runtime
+export const API_BASE = {
+  toString() {
+    return getApiBaseUrl();
+  },
+  valueOf() {
+    return getApiBaseUrl();
+  },
+  replace(...args) {
+    return getApiBaseUrl().replace(...args);
+  },
+  startsWith(...args) {
+    return getApiBaseUrl().startsWith(...args);
+  },
+  endsWith(...args) {
+    return getApiBaseUrl().endsWith(...args);
+  },
+  includes(...args) {
+    return getApiBaseUrl().includes(...args);
+  },
+};
 
 const inFlightGetRequests = new Map();
 const readResponseCache = new Map();
@@ -85,7 +111,8 @@ export async function authenticatedFetch(input, options = {}) {
 
 export async function apiRequest(endpoint, options = {}) {
   const method = (options.method || 'GET').toUpperCase();
-  const rawUrl = endpoint.startsWith('http') ? endpoint : `${API_BASE}${endpoint}`;
+  const apiBase = getApiBaseUrl();
+  const rawUrl = endpoint.startsWith('http') ? endpoint : `${apiBase}${endpoint}`;
   const normalizedUrl = normalizeUrlKey(rawUrl);
   const storedToken = getStoredToken();
 

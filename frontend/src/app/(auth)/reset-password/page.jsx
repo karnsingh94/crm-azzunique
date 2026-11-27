@@ -3,18 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-
-function getApiBaseUrl() {
-  if (typeof window !== 'undefined') {
-    const host = window.location.hostname.toLowerCase();
-    if (host === 'crm.azzunique.in' || host.endsWith('.azzunique.in')) {
-      return `${window.location.origin}/api`;
-    }
-  }
-  return process.env.NEXT_PUBLIC_API_URL || 'https://crm.azzunique.in/api';
-}
-
-const API_BASE = getApiBaseUrl();
+import { getApiBaseUrl, API_BASE } from '@/lib/api';
 
 function ResetPasswordForm() {
   const router = useRouter();
