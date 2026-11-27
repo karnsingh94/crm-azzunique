@@ -8,17 +8,25 @@ import { clearStoredSession, getStoredToken } from './auth';
 export function getApiBaseUrl() {
   if (typeof window !== 'undefined') {
     const host = window.location.hostname.toLowerCase();
-    // In browser: if local development on localhost/loopback
-    if (host === 'localhost' || host === '127.0.0.1' || host === '[::1]') {
+    const isLocalhost = host === 'localhost' || host === '127.0.0.1' || host === '[::1]';
+    // In browser: only allow localhost URL if the user is actually on localhost/loopback
+    if (isLocalhost) {
       return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
     }
     // For ANY live/production environment (crm.azzunique.in, server IP, or custom domain):
-    // Always use the same-origin reverse-proxied /api endpoint.
-    // This is 100% resilient and NEVER attempts to call localhost on client devices!
+    // ABSOLUTE RULE: Never return localhost under any circumstance on a remote client browser.
+    const envUrl = process.env.NEXT_PUBLIC_API_URL;
+    if (envUrl && !envUrl.includes('localhost') && !envUrl.includes('127.0.0.1')) {
+      return envUrl;
+    }
     return `${window.location.origin}/api`;
   }
   // During SSR / build-time pre-rendering:
-  return process.env.NEXT_PUBLIC_API_URL || 'https://crm.azzunique.in/api';
+  const envUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (envUrl && !envUrl.includes('localhost') && !envUrl.includes('127.0.0.1')) {
+    return envUrl;
+  }
+  return 'https://crm.azzunique.in/api';
 }
 
 // Dynamic proxy string object so template literals (${API_BASE}) always evaluate getApiBaseUrl() at runtime

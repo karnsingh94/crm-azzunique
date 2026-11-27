@@ -9,6 +9,10 @@ const nextConfig = {
   outputFileTracingRoot: __dirname,
   devIndicators: false,
   reactStrictMode: true,
+  // Force a fresh unique build ID on every build so browser cache never reuses stale compiled chunks
+  generateBuildId: async () => {
+    return `build-${Date.now()}`;
+  },
   async headers() {
     return [
       {
@@ -17,7 +21,7 @@ const nextConfig = {
         headers: [
           {
             key: 'Cache-Control',
-            value: 'no-cache, no-store, must-revalidate',
+            value: 'no-cache, no-store, max-age=0, must-revalidate',
           },
           {
             key: 'Pragma',
