@@ -8,14 +8,48 @@ import { clearStoredSession, getStoredToken } from './auth';
 export function getApiBaseUrl() {
   if (typeof window !== 'undefined') {
     const host = window.location.hostname.toLowerCase();
-    if (host === 'crm.azzunique.in' || host.endsWith('.azzunique.in')) {
-      return `${window.location.origin}/api`;
+    const isLocalhost = host === 'localhost' || host === '127.0.0.1' || host === '[::1]';
+    // In browser: only allow localhost URL if the user is actually on localhost/loopback
+    if (isLocalhost) {
+      return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
     }
+    // For ANY live/production environment (crm.azzunique.in, server IP, or custom domain):
+    // ABSOLUTE RULE: Never return localhost under any circumstance on a remote client browser.
+    const envUrl = process.env.NEXT_PUBLIC_API_URL;
+    if (envUrl && !envUrl.includes('localhost') && !envUrl.includes('127.0.0.1')) {
+      return envUrl;
+    }
+    return `${window.location.origin}/api`;
   }
-  return process.env.NEXT_PUBLIC_API_URL || 'https://crm.azzunique.in/api';
+  // During SSR / build-time pre-rendering:
+  const envUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (envUrl && !envUrl.includes('localhost') && !envUrl.includes('127.0.0.1')) {
+    return envUrl;
+  }
+  return 'https://crm.azzunique.in/api';
 }
 
-export const API_BASE = getApiBaseUrl();
+// Dynamic proxy string object so template literals (${API_BASE}) always evaluate getApiBaseUrl() at runtime
+export const API_BASE = {
+  toString() {
+    return getApiBaseUrl();
+  },
+  valueOf() {
+    return getApiBaseUrl();
+  },
+  replace(...args) {
+    return getApiBaseUrl().replace(...args);
+  },
+  startsWith(...args) {
+    return getApiBaseUrl().startsWith(...args);
+  },
+  endsWith(...args) {
+    return getApiBaseUrl().endsWith(...args);
+  },
+  includes(...args) {
+    return getApiBaseUrl().includes(...args);
+  },
+};
 
 const inFlightGetRequests = new Map();
 const readResponseCache = new Map();
@@ -85,7 +119,8 @@ export async function authenticatedFetch(input, options = {}) {
 
 export async function apiRequest(endpoint, options = {}) {
   const method = (options.method || 'GET').toUpperCase();
-  const rawUrl = endpoint.startsWith('http') ? endpoint : `${API_BASE}${endpoint}`;
+  const apiBase = getApiBaseUrl();
+  const rawUrl = endpoint.startsWith('http') ? endpoint : `${apiBase}${endpoint}`;
   const normalizedUrl = normalizeUrlKey(rawUrl);
   const storedToken = getStoredToken();
 
