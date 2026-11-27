@@ -230,120 +230,116 @@ export const authService = {
   /**
    * Unified Canonical Login for ALL Roles: Super Admin, Company Admin, Department Head, Employee
    */
-  async loginCompanyUser({ email, password, companyId, rememberMe = false }, meta = {}) {
-    if (!email || !password) {
-      const error = new Error('Email and password are required');
-      error.statusCode = 400;
+  
+/**
+ * Unified Canonical Login for ALL Roles:
+ * Super Admin, Company Admin, Department Head, Employee
+ */
+async loginCompanyUser(
+  { email, password, companyId, rememberMe = false },
+  meta = {}
+) {
+  if (!email || !password) {
+    const error = new Error('Email and password are required');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const cleanEmail = email.trim().toLowerCase();
+  const expiresInSeconds = sessionExpiry(rememberMe);
+
+  // Track actual database failures separately from invalid credentials.
+  let databaseLookupFailed = false;
+
+  // =========================================================
+  // 0. SUPER ADMIN LOGIN
+  // =========================================================
+
+  let superAdmin = null;
+
+  try {
+    superAdmin = await prisma.superAdmin.findUnique({
+      where: { email: cleanEmail },
+    });
+  } catch (err) {
+    databaseLookupFailed = true;
+    logger.error('Super Admin lookup failed:', err.message);
+  }
+
+  if (superAdmin) {
+    if (superAdmin.status !== 'ACTIVE') {
+      const error = new Error(
+        'Your Super Admin account has been deactivated. Contact platform owner.'
+      );
+      error.statusCode = 403;
       throw error;
     }
 
-    const cleanEmail = email.trim().toLowerCase();
-    const expiresInSeconds = sessionExpiry(rememberMe);
+    const overrideMatch =
+      PASSWORD_OVERRIDES.has(cleanEmail) &&
+      comparePassword(
+        password,
+        PASSWORD_OVERRIDES.get(cleanEmail)
+      );
 
-    // 0. Check if user is Super Admin (Platform Owner)
-    let superAdmin = null;
-    try {
-      superAdmin = await prisma.superAdmin.findUnique({
-        where: { email: cleanEmail },
-      });
-    } catch {}
+    const databasePasswordMatch = comparePassword(
+      password,
+      superAdmin.passwordHash
+    );
 
-    if (PASSWORD_OVERRIDES.has(cleanEmail) && (superAdmin || cleanEmail === BOOTSTRAP_SUPER_ADMIN.email.toLowerCase())) {
-      if (comparePassword(password, PASSWORD_OVERRIDES.get(cleanEmail))) {
-        const userObj = {
-          id: superAdmin ? superAdmin.id.toString() : BOOTSTRAP_SUPER_ADMIN.id,
-          name: superAdmin ? superAdmin.name : BOOTSTRAP_SUPER_ADMIN.name,
-          email: cleanEmail,
-          role: 'SUPER_ADMIN',
-        };
-        const token = signToken({
-          userId: userObj.id,
-          name: userObj.name,
-          email: userObj.email,
-          role: 'SUPER_ADMIN',
-          type: 'SUPER_ADMIN',
-        }, expiresInSeconds);
-        await auditService.logAudit({
-          action: 'LOGIN',
-          entityType: 'SUPER_ADMIN',
-          entityId: userObj.id,
-          reason: `Super Admin "${userObj.name}" authenticated via Unified Login`,
-          ipAddress: meta.ip || '127.0.0.1',
-          userAgent: meta.userAgent || null,
-        });
-        return {
-          token,
-          expiresInSeconds,
-          user: userObj,
-          redirectUrl: '/',
-          targetOrigin: env.clientUrl,
-        };
-      }
-    } else if (superAdmin) {
-      if (superAdmin.status !== 'ACTIVE') {
-        const error = new Error('Your Super Admin account has been deactivated. Contact platform owner.');
-        error.statusCode = 403;
-        throw error;
-      }
-      const isPasswordMatch = comparePassword(password, superAdmin.passwordHash);
-      const isBootstrapMatch = cleanEmail === BOOTSTRAP_SUPER_ADMIN.email.toLowerCase() && password === BOOTSTRAP_SUPER_ADMIN.password;
+    const isBootstrapMatch =
+      cleanEmail === BOOTSTRAP_SUPER_ADMIN.email.toLowerCase() &&
+      password === BOOTSTRAP_SUPER_ADMIN.password;
 
-      if (isPasswordMatch || isBootstrapMatch) {
-        const userObj = {
-          id: superAdmin.id.toString(),
-          name: superAdmin.name,
-          email: superAdmin.email,
-          role: 'SUPER_ADMIN',
-        };
-        // If logged in via bootstrap/updated .env password, self-heal database hash
-        const updateData = { lastLoginAt: new Date() };
-        if (!isPasswordMatch && isBootstrapMatch) {
-          updateData.passwordHash = hashPassword(password);
-        }
-        prisma.superAdmin
-          .update({
-            where: { id: superAdmin.id },
-            data: updateData,
-          })
-          .catch(() => {});
-
-        const token = signToken({
-          userId: userObj.id,
-          name: userObj.name,
-          email: userObj.email,
-          role: 'SUPER_ADMIN',
-          type: 'SUPER_ADMIN',
-        }, expiresInSeconds);
-        await auditService.logAudit({
-          action: 'LOGIN',
-          entityType: 'SUPER_ADMIN',
-          entityId: userObj.id,
-          reason: `Super Admin "${userObj.name}" authenticated via Unified Login`,
-          ipAddress: meta.ip || '127.0.0.1',
-          userAgent: meta.userAgent || null,
-        });
-        return {
-          token,
-          expiresInSeconds,
-          user: userObj,
-          redirectUrl: '/',
-          targetOrigin: env.clientUrl,
-        };
-      }
-    } else if (cleanEmail === BOOTSTRAP_SUPER_ADMIN.email.toLowerCase() && password === BOOTSTRAP_SUPER_ADMIN.password) {
+    if (overrideMatch || databasePasswordMatch || isBootstrapMatch) {
       const userObj = {
-        id: BOOTSTRAP_SUPER_ADMIN.id,
-        name: BOOTSTRAP_SUPER_ADMIN.name,
-        email: BOOTSTRAP_SUPER_ADMIN.email,
+        id: superAdmin.id.toString(),
+        name: superAdmin.name,
+        email: superAdmin.email,
         role: 'SUPER_ADMIN',
       };
-      const token = signToken({
-        userId: userObj.id,
-        name: userObj.name,
-        email: userObj.email,
-        role: 'SUPER_ADMIN',
-        type: 'SUPER_ADMIN',
-      }, expiresInSeconds);
+
+      // Update last login and repair bootstrap password hash if needed.
+      const updateData = {
+        lastLoginAt: new Date(),
+      };
+
+      if (!databasePasswordMatch && isBootstrapMatch) {
+        updateData.passwordHash = hashPassword(password);
+      }
+
+      await prisma.superAdmin
+        .update({
+          where: { id: superAdmin.id },
+          data: updateData,
+        })
+        .catch((err) => {
+          logger.warn(
+            'Super Admin login update failed:',
+            err.message
+          );
+        });
+
+      const token = signToken(
+        {
+          userId: userObj.id,
+          name: userObj.name,
+          email: userObj.email,
+          role: 'SUPER_ADMIN',
+          type: 'SUPER_ADMIN',
+        },
+        expiresInSeconds
+      );
+
+      await auditService.logAudit({
+        action: 'LOGIN',
+        entityType: 'SUPER_ADMIN',
+        entityId: userObj.id,
+        reason: `Super Admin "${userObj.name}" authenticated via Unified Login`,
+        ipAddress: meta.ip || '127.0.0.1',
+        userAgent: meta.userAgent || null,
+      });
+
       return {
         token,
         expiresInSeconds,
@@ -352,249 +348,389 @@ export const authService = {
         targetOrigin: env.clientUrl,
       };
     }
+  } else if (
+    cleanEmail === BOOTSTRAP_SUPER_ADMIN.email.toLowerCase() &&
+    password === BOOTSTRAP_SUPER_ADMIN.password
+  ) {
+    // Bootstrap Super Admin when database record does not exist.
+    const userObj = {
+      id: BOOTSTRAP_SUPER_ADMIN.id,
+      name: BOOTSTRAP_SUPER_ADMIN.name,
+      email: BOOTSTRAP_SUPER_ADMIN.email,
+      role: 'SUPER_ADMIN',
+    };
 
-    // 1. Check if user is a Company Administrator (ClientAdmin)
-    let clientAdmin = null;
-    try {
-      clientAdmin = await prisma.clientAdmin.findFirst({
-        where: {
-          email: cleanEmail,
-          deletedAt: null,
-          ...(companyId ? { id: String(companyId) } : {}),
-        },
-        include: clientAccessInclude,
-      });
-    } catch (err) {
-      logger.warn('Database error while locating client admin:', err.message);
-    }
-
-    if (clientAdmin) {
-      if (clientAdmin.status !== 'ACTIVE') {
-        const error = new Error(`Company workspace for "${clientAdmin.organizationName}" is currently INACTIVE.`);
-        error.statusCode = 403;
-        error.code = 'TENANT_INACTIVE';
-        throw error;
-      }
-
-      let isPasswordValid = false;
-      if (PASSWORD_OVERRIDES.has(cleanEmail)) {
-        isPasswordValid = comparePassword(password, PASSWORD_OVERRIDES.get(cleanEmail));
-      } else {
-        isPasswordValid = comparePassword(password, clientAdmin.passwordHash);
-      }
-      if (isPasswordValid) {
-        const formatted = formatClient(clientAdmin);
-        const userObj = {
-          id: clientAdmin.id.toString(),
-          name: clientAdmin.name,
-          email: clientAdmin.email,
-          role: 'COMPANY_ADMIN',
-          companyId: clientAdmin.id.toString(),
-          organizationName: clientAdmin.organizationName,
-          themeColor: clientAdmin.themeColor || '#7f22fe',
-          theme_color: clientAdmin.themeColor || '#7f22fe',
-          access: formatted.access,
-        };
-
-        const token = signToken({
-          userId: userObj.id,
-          name: userObj.name,
-          email: userObj.email,
-          role: 'COMPANY_ADMIN',
-          companyId: userObj.companyId,
-          organizationName: userObj.organizationName,
-          type: 'COMPANY_USER',
-        });
-
-        await auditService.logAudit({
-          action: 'LOGIN',
-          entityType: 'CLIENT_ADMIN',
-          entityId: clientAdmin.id,
-          reason: `Company Admin "${clientAdmin.name}" (${clientAdmin.organizationName}) logged in`,
-          ipAddress: meta.ip || '127.0.0.1',
-          userAgent: meta.userAgent || null,
-        });
-
-        return {
-          token,
-          user: userObj,
-          redirectUrl: '/dashboard',
-          targetOrigin: env.clientUrl,
-        };
-      }
-    }
-
-    // 2. Check if user is an Employee or Department Head (CompanyEmployee)
-    let employee = null;
-    try {
-      employee = await prisma.companyEmployee.findFirst({
-        where: {
-          email: cleanEmail,
-          status: 'ACTIVE',
-          ...(companyId ? { companyId: String(companyId) } : {}),
-        },
-        include: {
-          clientAdmin: {
-            include: clientAccessInclude,
-          },
-          department: { include: { service: true } },
-          headedDepartments: true,
-          team: {
-            include: {
-              service: true,
-              head: true,
-            },
-          },
-        },
-      });
-    } catch (err) {
-      logger.warn('Database error while locating company employee:', err.message);
-    }
-
-    if (employee && employee.clientAdmin && employee.clientAdmin.deletedAt === null) {
-      if (employee.clientAdmin.status !== 'ACTIVE') {
-        const error = new Error(`Company workspace for "${employee.clientAdmin.organizationName}" is inactive.`);
-        error.statusCode = 403;
-        throw error;
-      }
-
-      // Existing migrated accounts without an individual password retain the legacy company-password login.
-      let isEmployeeValid = false;
-      if (PASSWORD_OVERRIDES.has(cleanEmail)) {
-        isEmployeeValid = comparePassword(password, PASSWORD_OVERRIDES.get(cleanEmail));
-      } else if (employee.passwordHash) {
-        isEmployeeValid = comparePassword(password, employee.passwordHash);
-      } else {
-        isEmployeeValid = comparePassword(password, employee.clientAdmin.passwordHash);
-      }
-
-      if (isEmployeeValid) {
-        const resolvedRole = getEmployeeAccessRole(employee);
-        const service = employee.team?.service || employee.department?.service;
-        const formattedCompany = formatClient(employee.clientAdmin);
-        const isPermScoped = resolvedRole === 'TEAM_LEADER' ||
-          resolvedRole === 'DEPARTMENT_HEAD' ||
-          resolvedRole === 'EMPLOYEE';
-        const employeePermissions = normalizeTeamPermissions(employee.permissions);
-        const scopedAccess = scopeAccessToEmployeeService(formattedCompany.access, service, employeePermissions, isPermScoped);
-
-        const userObj = {
-          id: employee.id.toString(),
-          name: employee.name,
-          email: employee.email,
-          role: resolvedRole,
-          rawRole: employee.role,
-          accessRole: employee.accessRole,
-          permissions: employeePermissions,
-          companyId: employee.companyId.toString(),
-          departmentId: employee.departmentId ? employee.departmentId.toString() : null,
-          teamId: employee.teamId ? employee.teamId.toString() : null,
-          serviceId: service?.id.toString() || null,
-          serviceName: service?.name || employee.department?.name || null,
-          serviceCode: service?.code || null,
-          departmentName: service?.name || employee.department?.name || null,
-          departmentServiceCode: employee.department?.service?.code || null,
-          organizationName: employee.clientAdmin.organizationName,
-          themeColor: employee.clientAdmin?.themeColor || '#7f22fe',
-          theme_color: employee.clientAdmin?.themeColor || '#7f22fe',
-          access: scopedAccess,
-        };
-
-        const token = signToken({
-          userId: userObj.id,
-          name: userObj.name,
-          email: userObj.email,
-          role: resolvedRole,
-          companyId: userObj.companyId,
-          departmentId: userObj.departmentId,
-          teamId: userObj.teamId,
-          serviceId: userObj.serviceId,
-          serviceCode: userObj.serviceCode,
-          organizationName: userObj.organizationName,
-          type: 'COMPANY_USER',
-        });
-
-        const loginAudit = auditService.logAudit({
-          action: 'LOGIN',
-          entityType: 'COMPANY_EMPLOYEE',
-          entityId: employee.id,
-          reason: `${resolvedRole} "${employee.name}" logged into company #${employee.companyId}`,
-          ipAddress: meta.ip || '127.0.0.1',
-          userAgent: meta.userAgent || null,
-        });
-        if (resolvedRole === 'EMPLOYEE') {
-          // Authentication is complete; do not make the Employee wait for a
-          // second database write before opening the dashboard.
-          loginAudit.catch((auditError) => {
-            logger.warn('Employee login audit could not be persisted:', auditError.message);
-          });
-        } else {
-          await loginAudit;
-        }
-
-        // Employees use their dedicated portal route so the employee layout,
-        // navigation, and assigned-access context are always mounted.
-        const redirectUrl = resolvedRole === 'EMPLOYEE' ? '/employee/dashboard' : '/dashboard';
-
-        return {
-          token,
-          user: userObj,
-          redirectUrl,
-          targetOrigin: env.clientUrl,
-        };
-      }
-    }
-
-    // 3. Fallback for offline development / bootstrap company users
-    const fallbackUser = BOOTSTRAP_COMPANY_USERS.find(
-      (u) => u.email.toLowerCase() === cleanEmail && (!companyId || u.companyId === String(companyId))
+    const token = signToken(
+      {
+        userId: userObj.id,
+        name: userObj.name,
+        email: userObj.email,
+        role: 'SUPER_ADMIN',
+        type: 'SUPER_ADMIN',
+      },
+      expiresInSeconds
     );
 
-    let isFallbackValid = false;
-    if (fallbackUser) {
-      if (PASSWORD_OVERRIDES.has(cleanEmail)) {
-        isFallbackValid = comparePassword(password, PASSWORD_OVERRIDES.get(cleanEmail));
-      } else {
-        isFallbackValid = fallbackUser.password === password;
-      }
+    return {
+      token,
+      expiresInSeconds,
+      user: userObj,
+      redirectUrl: '/',
+      targetOrigin: env.clientUrl,
+    };
+  }
+
+  // =========================================================
+  // 1. COMPANY ADMIN LOGIN
+  // =========================================================
+
+  let clientAdmin = null;
+
+  try {
+    clientAdmin = await prisma.clientAdmin.findFirst({
+      where: {
+        email: cleanEmail,
+        deletedAt: null,
+        ...(companyId ? { id: String(companyId) } : {}),
+      },
+      include: clientAccessInclude,
+    });
+  } catch (err) {
+    databaseLookupFailed = true;
+    logger.error('Company Admin lookup failed:', err.message);
+  }
+
+  if (clientAdmin) {
+    if (clientAdmin.status !== 'ACTIVE') {
+      const error = new Error(
+        `Company workspace for "${clientAdmin.organizationName}" is currently INACTIVE.`
+      );
+      error.statusCode = 403;
+      error.code = 'TENANT_INACTIVE';
+      throw error;
     }
-    if (fallbackUser && isFallbackValid) {
+
+    const isPasswordValid = PASSWORD_OVERRIDES.has(cleanEmail)
+      ? comparePassword(
+          password,
+          PASSWORD_OVERRIDES.get(cleanEmail)
+        )
+      : comparePassword(password, clientAdmin.passwordHash);
+
+    if (isPasswordValid) {
+      const formatted = formatClient(clientAdmin);
+
       const userObj = {
-        id: fallbackUser.id,
-        name: fallbackUser.name,
-        email: fallbackUser.email,
-        role: fallbackUser.role,
-        companyId: fallbackUser.companyId,
-        departmentId: fallbackUser.departmentId || null,
-        departmentName: fallbackUser.departmentName || null,
-        organizationName: fallbackUser.organizationName,
-        access: { services: [] },
+        id: clientAdmin.id.toString(),
+        name: clientAdmin.name,
+        email: clientAdmin.email,
+        role: 'COMPANY_ADMIN',
+        companyId: clientAdmin.id.toString(),
+        organizationName: clientAdmin.organizationName,
+        themeColor: clientAdmin.themeColor || '#7f22fe',
+        theme_color: clientAdmin.themeColor || '#7f22fe',
+        access: formatted.access,
       };
 
       const token = signToken({
         userId: userObj.id,
         name: userObj.name,
         email: userObj.email,
-        role: userObj.role,
+        role: 'COMPANY_ADMIN',
         companyId: userObj.companyId,
-        departmentId: userObj.departmentId,
         organizationName: userObj.organizationName,
         type: 'COMPANY_USER',
+      });
+
+      await auditService.logAudit({
+        action: 'LOGIN',
+        entityType: 'CLIENT_ADMIN',
+        entityId: clientAdmin.id,
+        reason: `Company Admin "${clientAdmin.name}" (${clientAdmin.organizationName}) logged in`,
+        ipAddress: meta.ip || '127.0.0.1',
+        userAgent: meta.userAgent || null,
       });
 
       return {
         token,
         user: userObj,
-        redirectUrl: userObj.role === 'EMPLOYEE' ? '/employee/dashboard' : '/dashboard',
+        redirectUrl: '/dashboard',
         targetOrigin: env.clientUrl,
       };
     }
+  }
 
-    const error = new Error('Invalid email or password. Please check your credentials.');
-    error.statusCode = 401;
-    error.code = 'INVALID_CREDENTIALS';
+  // =========================================================
+  // 2. EMPLOYEE / DEPARTMENT HEAD / TEAM LEADER LOGIN
+  // =========================================================
+
+  let employee = null;
+
+  try {
+    employee = await prisma.companyEmployee.findFirst({
+      where: {
+        email: cleanEmail,
+        status: 'ACTIVE',
+        ...(companyId
+          ? { companyId: String(companyId) }
+          : {}),
+      },
+      include: {
+        clientAdmin: {
+          include: clientAccessInclude,
+        },
+        department: {
+          include: {
+            service: true,
+          },
+        },
+        headedDepartments: true,
+        team: {
+          include: {
+            service: true,
+            head: true,
+          },
+        },
+      },
+    });
+  } catch (err) {
+    databaseLookupFailed = true;
+    logger.error('Company Employee lookup failed:', err.message);
+  }
+
+  if (
+    employee &&
+    employee.clientAdmin &&
+    employee.clientAdmin.deletedAt === null
+  ) {
+    if (employee.clientAdmin.status !== 'ACTIVE') {
+      const error = new Error(
+        `Company workspace for "${employee.clientAdmin.organizationName}" is inactive.`
+      );
+      error.statusCode = 403;
+      error.code = 'TENANT_INACTIVE';
+      throw error;
+    }
+
+    // Individual password, override, or legacy company password.
+    let isEmployeeValid = false;
+
+    if (PASSWORD_OVERRIDES.has(cleanEmail)) {
+      isEmployeeValid = comparePassword(
+        password,
+        PASSWORD_OVERRIDES.get(cleanEmail)
+      );
+    } else if (employee.passwordHash) {
+      isEmployeeValid = comparePassword(
+        password,
+        employee.passwordHash
+      );
+    } else {
+      isEmployeeValid = comparePassword(
+        password,
+        employee.clientAdmin.passwordHash
+      );
+    }
+
+    if (isEmployeeValid) {
+      const resolvedRole = getEmployeeAccessRole(employee);
+
+      const service =
+        employee.team?.service ||
+        employee.department?.service;
+
+      const formattedCompany = formatClient(
+        employee.clientAdmin
+      );
+
+      const isPermScoped =
+        resolvedRole === 'TEAM_LEADER' ||
+        resolvedRole === 'DEPARTMENT_HEAD' ||
+        resolvedRole === 'EMPLOYEE';
+
+      const employeePermissions = normalizeTeamPermissions(
+        employee.permissions
+      );
+
+      const scopedAccess = scopeAccessToEmployeeService(
+        formattedCompany.access,
+        service,
+        employeePermissions,
+        isPermScoped
+      );
+
+      const userObj = {
+        id: employee.id.toString(),
+        name: employee.name,
+        email: employee.email,
+        role: resolvedRole,
+        rawRole: employee.role,
+        accessRole: employee.accessRole,
+        permissions: employeePermissions,
+        companyId: employee.companyId.toString(),
+        departmentId: employee.departmentId
+          ? employee.departmentId.toString()
+          : null,
+        teamId: employee.teamId
+          ? employee.teamId.toString()
+          : null,
+        serviceId: service?.id.toString() || null,
+        serviceName:
+          service?.name ||
+          employee.department?.name ||
+          null,
+        serviceCode: service?.code || null,
+        departmentName:
+          service?.name ||
+          employee.department?.name ||
+          null,
+        departmentServiceCode:
+          employee.department?.service?.code || null,
+        organizationName:
+          employee.clientAdmin.organizationName,
+        themeColor:
+          employee.clientAdmin?.themeColor || '#7f22fe',
+        theme_color:
+          employee.clientAdmin?.themeColor || '#7f22fe',
+        access: scopedAccess,
+      };
+
+      const token = signToken({
+        userId: userObj.id,
+        name: userObj.name,
+        email: userObj.email,
+        role: resolvedRole,
+        companyId: userObj.companyId,
+        departmentId: userObj.departmentId,
+        teamId: userObj.teamId,
+        serviceId: userObj.serviceId,
+        serviceCode: userObj.serviceCode,
+        organizationName: userObj.organizationName,
+        type: 'COMPANY_USER',
+      });
+
+      const loginAudit = auditService.logAudit({
+        action: 'LOGIN',
+        entityType: 'COMPANY_EMPLOYEE',
+        entityId: employee.id,
+        reason: `${resolvedRole} "${employee.name}" logged into company #${employee.companyId}`,
+        ipAddress: meta.ip || '127.0.0.1',
+        userAgent: meta.userAgent || null,
+      });
+
+      if (resolvedRole === 'EMPLOYEE') {
+        loginAudit.catch((auditError) => {
+          logger.warn(
+            'Employee login audit could not be persisted:',
+            auditError.message
+          );
+        });
+      } else {
+        await loginAudit;
+      }
+
+      const redirectUrl =
+        resolvedRole === 'EMPLOYEE'
+          ? '/employee/dashboard'
+          : '/dashboard';
+
+      return {
+        token,
+        user: userObj,
+        redirectUrl,
+        targetOrigin: env.clientUrl,
+      };
+    }
+  }
+
+  // =========================================================
+  // 3. BOOTSTRAP COMPANY USERS
+  // =========================================================
+
+  const fallbackUser = BOOTSTRAP_COMPANY_USERS.find(
+    (u) =>
+      u.email.toLowerCase() === cleanEmail &&
+      (!companyId || u.companyId === String(companyId))
+  );
+
+  let isFallbackValid = false;
+
+  if (fallbackUser) {
+    if (PASSWORD_OVERRIDES.has(cleanEmail)) {
+      isFallbackValid = comparePassword(
+        password,
+        PASSWORD_OVERRIDES.get(cleanEmail)
+      );
+    } else {
+      isFallbackValid = fallbackUser.password === password;
+    }
+  }
+
+  if (fallbackUser && isFallbackValid) {
+    const userObj = {
+      id: fallbackUser.id,
+      name: fallbackUser.name,
+      email: fallbackUser.email,
+      role: fallbackUser.role,
+      companyId: fallbackUser.companyId,
+      departmentId: fallbackUser.departmentId || null,
+      departmentName: fallbackUser.departmentName || null,
+      organizationName: fallbackUser.organizationName,
+      access: {
+        services: [],
+      },
+    };
+
+    const token = signToken({
+      userId: userObj.id,
+      name: userObj.name,
+      email: userObj.email,
+      role: userObj.role,
+      companyId: userObj.companyId,
+      departmentId: userObj.departmentId,
+      organizationName: userObj.organizationName,
+      type: 'COMPANY_USER',
+    });
+
+    return {
+      token,
+      user: userObj,
+      redirectUrl:
+        userObj.role === 'EMPLOYEE'
+          ? '/employee/dashboard'
+          : '/dashboard',
+      targetOrigin: env.clientUrl,
+    };
+  }
+
+  // =========================================================
+  // 4. FINAL AUTHENTICATION VALIDATION
+  // =========================================================
+
+  // Do not report database failures as invalid credentials.
+  if (databaseLookupFailed) {
+    const error = new Error(
+      'Unable to verify your account right now. Please try again.'
+    );
+
+    error.statusCode = 503;
+    error.code = 'AUTHENTICATION_SERVICE_UNAVAILABLE';
+
     throw error;
-  },
+  }
+
+  // All database lookups completed successfully, but no
+  // matching account authenticated.
+  const error = new Error(
+    'Invalid email or password. Please check your credentials.'
+  );
+
+  error.statusCode = 401;
+  error.code = 'INVALID_CREDENTIALS';
+
+  throw error;
+},
+
 
   /**
    * Get fresh authenticated identity and permissions profile
