@@ -16,6 +16,7 @@ app.use(securityHeadersMiddleware);
 
 // 2. Cross-Origin Resource Sharing
 app.use(corsMiddleware);
+app.options('*', corsMiddleware);
 
 // 3. Request body parsing
 app.use(express.json({ limit: '2mb' }));

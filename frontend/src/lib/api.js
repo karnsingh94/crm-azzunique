@@ -5,7 +5,17 @@
 
 import { clearStoredSession, getStoredToken } from './auth';
 
-export const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://crm.azzunique.in/api';
+export function getApiBaseUrl() {
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname.toLowerCase();
+    if (host === 'crm.azzunique.in' || host.endsWith('.azzunique.in')) {
+      return `${window.location.origin}/api`;
+    }
+  }
+  return process.env.NEXT_PUBLIC_API_URL || 'https://crm.azzunique.in/api';
+}
+
+export const API_BASE = getApiBaseUrl();
 
 const inFlightGetRequests = new Map();
 const readResponseCache = new Map();

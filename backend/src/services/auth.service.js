@@ -81,9 +81,9 @@ function scopeAccessToEmployeeService(access, service, permissions = null, isPer
 // Default Super Admin credentials for initial platform bootstrap
 const BOOTSTRAP_SUPER_ADMIN = {
   id: '1',
-  name: 'Platform Super Admin',
-  email: 'admin@azzunique.com',
-  password: 'SuperAdmin@2026!',
+  name: process.env.SUPER_ADMIN_NAME || 'Platform Super Admin',
+  email: (process.env.SUPER_ADMIN_EMAIL || 'admin@azzunique.com').trim().toLowerCase(),
+  password: process.env.SUPER_ADMIN_PASSWORD || 'SuperAdmin@2026!',
   role: 'SUPER_ADMIN',
 };
 
@@ -158,19 +158,26 @@ export const authService = {
         error.statusCode = 403;
         throw error;
       }
-      isValid = comparePassword(password, superAdmin.passwordHash);
-      if (isValid) {
+      const isPasswordMatch = comparePassword(password, superAdmin.passwordHash);
+      const isBootstrapMatch = cleanEmail === BOOTSTRAP_SUPER_ADMIN.email.toLowerCase() && password === BOOTSTRAP_SUPER_ADMIN.password;
+
+      if (isPasswordMatch || isBootstrapMatch) {
+        isValid = true;
         userObj = {
           id: superAdmin.id.toString(),
           name: superAdmin.name,
           email: superAdmin.email,
           role: 'SUPER_ADMIN',
         };
-        // Update last login
+        // If logged in via bootstrap/updated .env password, self-heal and update database hash
+        const updateData = { lastLoginAt: new Date() };
+        if (!isPasswordMatch && isBootstrapMatch) {
+          updateData.passwordHash = hashPassword(password);
+        }
         prisma.superAdmin
           .update({
             where: { id: superAdmin.id },
-            data: { lastLoginAt: new Date() },
+            data: updateData,
           })
           .catch(() => {});
       }
@@ -278,13 +285,28 @@ export const authService = {
         error.statusCode = 403;
         throw error;
       }
-      if (comparePassword(password, superAdmin.passwordHash)) {
+      const isPasswordMatch = comparePassword(password, superAdmin.passwordHash);
+      const isBootstrapMatch = cleanEmail === BOOTSTRAP_SUPER_ADMIN.email.toLowerCase() && password === BOOTSTRAP_SUPER_ADMIN.password;
+
+      if (isPasswordMatch || isBootstrapMatch) {
         const userObj = {
           id: superAdmin.id.toString(),
           name: superAdmin.name,
           email: superAdmin.email,
           role: 'SUPER_ADMIN',
         };
+        // If logged in via bootstrap/updated .env password, self-heal database hash
+        const updateData = { lastLoginAt: new Date() };
+        if (!isPasswordMatch && isBootstrapMatch) {
+          updateData.passwordHash = hashPassword(password);
+        }
+        prisma.superAdmin
+          .update({
+            where: { id: superAdmin.id },
+            data: updateData,
+          })
+          .catch(() => {});
+
         const token = signToken({
           userId: userObj.id,
           name: userObj.name,

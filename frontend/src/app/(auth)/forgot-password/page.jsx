@@ -3,7 +3,17 @@
 import { useState } from 'react';
 import Link from 'next/link';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://crm.azzunique.in/api';
+function getApiBaseUrl() {
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname.toLowerCase();
+    if (host === 'crm.azzunique.in' || host.endsWith('.azzunique.in')) {
+      return `${window.location.origin}/api`;
+    }
+  }
+  return process.env.NEXT_PUBLIC_API_URL || 'https://crm.azzunique.in/api';
+}
+
+const API_BASE = getApiBaseUrl();
 
 export default function SuperAdminForgotPasswordPage() {
   const [email, setEmail] = useState('');

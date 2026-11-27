@@ -388,11 +388,15 @@ function redactSeedDiagnostic(value, key = '') {
 export async function seedDatabase() {
   console.log('🌱 Starting idempotent database seeding...');
 
-  // 1. Seed the initial platform administrator without overwriting existing credentials.
+  // 1. Seed the initial platform administrator (updates password and details if already exists)
   try {
     await prisma.superAdmin.upsert({
       where: { email: initialSuperAdmin.email },
-      update: {},
+      update: {
+        name: initialSuperAdmin.name,
+        passwordHash: await bcrypt.hash(initialSuperAdmin.password, 10),
+        status: 'ACTIVE',
+      },
       create: {
         name: initialSuperAdmin.name,
         email: initialSuperAdmin.email,

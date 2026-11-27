@@ -1,6 +1,16 @@
 'use client';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://crm.azzunique.in/api';
+export function getApiBase() {
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname.toLowerCase();
+    if (host === 'crm.azzunique.in' || host.endsWith('.azzunique.in')) {
+      return `${window.location.origin}/api`;
+    }
+  }
+  return process.env.NEXT_PUBLIC_API_URL || 'https://crm.azzunique.in/api';
+}
+
+const API_BASE = getApiBase();
 const AUTH_STORAGE_KEYS = [
   'azzunique_super_token',
   'azzunique_super_token_backup',

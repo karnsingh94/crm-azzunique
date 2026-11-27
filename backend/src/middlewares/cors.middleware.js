@@ -13,20 +13,75 @@ export function securityHeadersMiddleware(req, res, next) {
 }
 
 /**
+ * Check if the incoming request origin is permitted
+ */
+function isOriginAllowed(origin) {
+  // Allow non-browser requests (e.g., Postman, curl, server-side fetch, mobile app)
+  if (!origin) return true;
+
+  try {
+    const parsed = new URL(origin);
+    const host = parsed.hostname.toLowerCase();
+
+    // Explicitly allowed in configuration
+    if (env.allowedOrigins && env.allowedOrigins.includes(origin)) {
+      return true;
+    }
+
+    // Allow any azzunique.in domain or subdomain (crm.azzunique.in, www.crm.azzunique.in, etc.)
+    if (host === 'azzunique.in' || host.endsWith('.azzunique.in')) {
+      return true;
+    }
+
+    // Allow local development hosts
+    if (host === 'localhost' || host === '127.0.0.1' || host === '[::1]') {
+      return true;
+    }
+
+    // Allow LAN IP ranges for local network testing across multiple devices (192.168.x, 10.x, 172.16-31.x)
+    if (/^(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)/.test(host)) {
+      return true;
+    }
+  } catch {
+    // If not a parseable URL, fall back to checking if it is explicitly listed
+    if (env.allowedOrigins && env.allowedOrigins.includes(origin)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
  * Dynamic CORS configuration based on validated allowed origins
  */
 export const corsMiddleware = cors({
   origin: (origin, callback) => {
-    // Allow non-browser requests (e.g., Postman, curl, server-to-server) or matched origins
-    if (!origin || env.allowedOrigins.includes(origin)) {
+    if (isOriginAllowed(origin)) {
       callback(null, true);
     } else {
-      callback(new Error('Blocked by CORS policy'));
+      // Standard CORS policy: return false so browser rejects the origin gracefully,
+      // without throwing an unhandled Express 500 error that terminates the connection.
+      callback(null, false);
     }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'Accept',
+    'Origin',
+    'Cache-Control',
+    'Pragma',
+    'X-Company-ID',
+    'X-Client-ID',
+  ],
+  exposedHeaders: ['Set-Cookie'],
+  maxAge: 86400, // Cache preflight requests for 24 hours to eliminate latency on other devices
+  optionsSuccessStatus: 200,
 });
 
 export default { securityHeadersMiddleware, corsMiddleware };
+

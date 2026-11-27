@@ -3,10 +3,46 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { clearStoredSession, getStoredToken, rememberVerifiedSession, verifyCurrentSession } from '@/lib/auth';
+import { clearStoredSession, getStoredToken, rememberVerifiedSession, verifyCurrentSession, getApiBase } from '@/lib/auth';
 import { useCompanyAuthContext } from '@/context/CompanyAuthContext';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://crm.azzunique.in/api';
+function getApiBaseUrl() {
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname.toLowerCase();
+    if (host === 'crm.azzunique.in' || host.endsWith('.azzunique.in')) {
+      return `${window.location.origin}/api`;
+    }
+  }
+  return process.env.NEXT_PUBLIC_API_URL || 'https://crm.azzunique.in/api';
+}
+
+async function fetchWithRetry(url, options, maxRetries = 2) {
+  let lastError;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const res = await fetch(url, options);
+      return res;
+    } catch (err) {
+      lastError = err;
+      if (attempt < maxRetries) {
+        // Small backoff before retrying to absorb initial mobile connection latency
+        await new Promise((r) => setTimeout(r, (attempt + 1) * 350));
+      }
+    }
+  }
+  throw lastError;
+}
+
+function safeSetStorage(storage, key, value) {
+  try {
+    if (typeof window !== 'undefined' && storage) {
+      storage.setItem(key, value);
+    }
+  } catch (err) {
+    console.warn(`[Storage Warning] Failed to set ${key}:`, err);
+  }
+}
+
 const ALLOWED_ORIGINS = ['http://localhost:3000', 'http://localhost:3001'];
 
 function resolveCompanyDestination(user, redirectParam, fallback = '/dashboard') {
@@ -48,7 +84,8 @@ function LoginForm() {
       // 1. Check for incoming cross-origin handoff token
       if (authTokenParam) {
         try {
-          const res = await fetch(`${API_BASE}/auth/me`, {
+          const apiBase = getApiBaseUrl();
+          const res = await fetch(`${apiBase}/auth/me`, {
             credentials: 'include',
             headers: { Authorization: `Bearer ${authTokenParam}` },
           });
@@ -57,16 +94,17 @@ function LoginForm() {
             const user = body?.data?.user || body?.data;
             if (user) {
               clearStoredSession();
+              const storage = typeof window !== 'undefined' ? window.sessionStorage : null;
               if (user.role === 'SUPER_ADMIN') {
-                sessionStorage.setItem('azzunique_super_token', authTokenParam);
-                sessionStorage.setItem('auth_user', JSON.stringify(user));
+                safeSetStorage(storage, 'azzunique_super_token', authTokenParam);
+                safeSetStorage(storage, 'auth_user', JSON.stringify(user));
                 const target = redirectParam && redirectParam.startsWith('/') ? redirectParam : '/super-admin';
                 rememberVerifiedSession(authTokenParam, user);
                 router.replace(target);
                 return;
               } else {
-                sessionStorage.setItem('azzunique_client_token', authTokenParam);
-                sessionStorage.setItem('company_user', JSON.stringify(user));
+                safeSetStorage(storage, 'azzunique_client_token', authTokenParam);
+                safeSetStorage(storage, 'company_user', JSON.stringify(user));
                 const target = resolveCompanyDestination(user, redirectParam);
                 rememberVerifiedSession(authTokenParam, user);
                 hydrateSession?.(user);
@@ -125,10 +163,12 @@ function LoginForm() {
 
     setLoading(true);
 
+    const apiBase = getApiBaseUrl();
+
     try {
       let response;
       try {
-        response = await fetch(`${API_BASE}/auth/login`, {
+        response = await fetchWithRetry(`${apiBase}/auth/login`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -140,11 +180,11 @@ function LoginForm() {
             password: formData.password.trim(),
             rememberMe: false,
           }),
-        });
+        }, 2);
       } catch (networkErr) {
         console.error('[Login Network Error]', networkErr);
         setErrorMessage(
-          `Cannot reach backend API (${API_BASE}/auth/login). ${networkErr?.message || 'Network/CORS request failed.'}`
+          `Unable to connect to login service (${apiBase}/auth/login). Please check your internet connection or try again.`
         );
         setLoading(false);
         return;
@@ -156,7 +196,7 @@ function LoginForm() {
         setErrorMessage(
           data?.message ||
             (!response.ok
-              ? `Login request failed (HTTP ${response.status} from ${API_BASE}).`
+              ? `Login request failed (HTTP ${response.status}).`
               : 'Authentication failed. Please verify your email and password.')
         );
         setLoading(false);
@@ -177,17 +217,17 @@ function LoginForm() {
       // 1. Wipe all previous session items to prevent cross-role collisions
       clearStoredSession();
 
-      // 2. Persist fresh session
-      const storage = sessionStorage;
+      // 2. Persist fresh session safely (guards against Safari private mode / storage quota)
+      const storage = typeof window !== 'undefined' ? window.sessionStorage : null;
       if (user.role === 'SUPER_ADMIN') {
-        storage.setItem('azzunique_super_token', token);
-        storage.setItem('auth_user', JSON.stringify(user));
+        safeSetStorage(storage, 'azzunique_super_token', token);
+        safeSetStorage(storage, 'auth_user', JSON.stringify(user));
       } else {
-        storage.setItem('azzunique_client_token', token);
-        storage.setItem('company_user', JSON.stringify(user));
-        storage.setItem('auth_user', JSON.stringify(user));
+        safeSetStorage(storage, 'azzunique_client_token', token);
+        safeSetStorage(storage, 'company_user', JSON.stringify(user));
+        safeSetStorage(storage, 'auth_user', JSON.stringify(user));
         if (user.companyId) {
-          storage.setItem('active_company_id', String(user.companyId));
+          safeSetStorage(storage, 'active_company_id', String(user.companyId));
         }
         if (user.organizationName || user.name) {
           const compData = {
@@ -200,7 +240,7 @@ function LoginForm() {
             access: user.access || { services: [] },
             status: user.status || 'ACTIVE',
           };
-          storage.setItem('cached_company_data', JSON.stringify(compData));
+          safeSetStorage(storage, 'cached_company_data', JSON.stringify(compData));
         }
       }
       rememberVerifiedSession(token, user);
@@ -220,7 +260,7 @@ function LoginForm() {
       router.replace(destination);
     } catch (err) {
       console.error('[Login Error]', err);
-      setErrorMessage(err?.message || 'Unexpected error during login.');
+      setErrorMessage(err?.message || 'Unexpected error during login. Please try again.');
       setLoading(false);
     }
   };

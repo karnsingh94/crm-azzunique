@@ -31,10 +31,16 @@ function validateConfig() {
   // Pre-configured allowed origins for CORS
   const defaultAllowedOrigins = [
     clientUrl,
+    'https://crm.azzunique.in',
+    'http://crm.azzunique.in',
+    'https://www.crm.azzunique.in',
+    'http://www.crm.azzunique.in',
     'http://localhost:3000',
     'http://127.0.0.1:3000',
     'http://localhost:3001',
     'http://127.0.0.1:3001',
+    'http://localhost:5000',
+    'http://127.0.0.1:5000',
   ];
 
   // Optional comma-separated origins from environment
