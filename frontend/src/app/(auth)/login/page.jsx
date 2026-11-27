@@ -16,18 +16,31 @@ function getApiBaseUrl() {
   return process.env.NEXT_PUBLIC_API_URL || 'https://crm.azzunique.in/api';
 }
 
-async function fetchWithRetry(url, options, maxRetries = 2) {
+const LOGIN_RETRY_DELAYS_MS = [400, 1000, 2200, 4000];
+const LOGIN_REQUEST_TIMEOUT_MS = 10000;
+const RETRYABLE_HTTP_STATUSES = new Set([502, 503, 504]);
+
+async function fetchWithRetry(url, options, maxRetries = LOGIN_RETRY_DELAYS_MS.length) {
   let lastError;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), LOGIN_REQUEST_TIMEOUT_MS);
     try {
-      const res = await fetch(url, options);
-      return res;
+      const res = await fetch(url, { ...options, signal: controller.signal, cache: 'no-store' });
+      clearTimeout(timeoutId);
+      if (!RETRYABLE_HTTP_STATUSES.has(res.status) || attempt === maxRetries) {
+        return res;
+      }
+      lastError = new Error(`Login service temporarily unavailable (HTTP ${res.status}).`);
     } catch (err) {
       lastError = err;
-      if (attempt < maxRetries) {
-        // Small backoff before retrying to absorb initial mobile connection latency
-        await new Promise((r) => setTimeout(r, (attempt + 1) * 350));
-      }
+    } finally {
+      clearTimeout(timeoutId);
+    }
+
+    if (attempt < maxRetries) {
+      const delay = LOGIN_RETRY_DELAYS_MS[Math.min(attempt, LOGIN_RETRY_DELAYS_MS.length - 1)];
+      await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
   throw lastError;
@@ -80,6 +93,15 @@ function LoginForm() {
 
   // Cross-origin token transfer & session verification on mount
   useEffect(() => {
+    // Wake a sleeping/restarting API while the user enters credentials. This
+    // keeps the first login from depending on a manual page refresh.
+    const apiBase = getApiBaseUrl();
+    fetchWithRetry(`${apiBase}/health`, {
+      method: 'GET',
+      credentials: 'include',
+      headers: { Accept: 'application/json' },
+    }, 2).catch(() => {});
+
     async function initSession() {
       // 1. Check for incoming cross-origin handoff token
       if (authTokenParam) {
@@ -180,12 +202,10 @@ function LoginForm() {
             password: formData.password.trim(),
             rememberMe: false,
           }),
-        }, 2);
+        });
       } catch (networkErr) {
         console.error('[Login Network Error]', networkErr);
-        setErrorMessage(
-          `Unable to connect to login service (${apiBase}/auth/login). Please check your internet connection or try again.`
-        );
+        setErrorMessage('Login service is temporarily unavailable. Please wait a moment and try again.');
         setLoading(false);
         return;
       }
