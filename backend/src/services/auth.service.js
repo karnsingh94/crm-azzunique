@@ -234,15 +234,20 @@ export const authService = {
 
 /**
  * Unified Canonical Login for ALL Roles:
- * Super Admin, Company Admin, Department Head, Employee
+ * Super Admin, Company Admin, Department Head, Team Leader, Employee
  */
 async loginCompanyUser(
   { email, password, companyId, rememberMe = false },
   meta = {}
 ) {
+  // =========================================================
+  // 1. BASIC VALIDATION
+  // =========================================================
+
   if (!email || !password) {
     const error = new Error('Email and password are required');
     error.statusCode = 400;
+    error.code = 'MISSING_CREDENTIALS';
     throw error;
   }
 
@@ -251,16 +256,8 @@ async loginCompanyUser(
 
   let databaseLookupFailed = false;
 
-  // Track each authentication independently.
-  const authStatus = {
-    superAdmin: false,
-    companyAdmin: false,
-    employee: false,
-    bootstrap: false,
-  };
-
   // =========================================================
-  // 0. SUPER ADMIN LOGIN
+  // 2. SUPER ADMIN LOGIN
   // =========================================================
 
   let superAdmin = null;
@@ -280,6 +277,7 @@ async loginCompanyUser(
         'Your Super Admin account has been deactivated. Contact platform owner.'
       );
       error.statusCode = 403;
+      error.code = 'SUPER_ADMIN_INACTIVE';
       throw error;
     }
 
@@ -299,75 +297,90 @@ async loginCompanyUser(
       cleanEmail === BOOTSTRAP_SUPER_ADMIN.email.toLowerCase() &&
       password === BOOTSTRAP_SUPER_ADMIN.password;
 
-    authStatus.superAdmin =
-      overrideMatch ||
-      databasePasswordMatch ||
-      isBootstrapMatchSuperAdmin;
-
-    if (authStatus.superAdmin) {
-      const userObj = {
-        id: superAdmin.id.toString(),
-        name: superAdmin.name,
-        email: superAdmin.email,
-        role: 'SUPER_ADMIN',
-      };
-
-      const updateData = {
-        lastLoginAt: new Date(),
-      };
-
-      if (
-        !databasePasswordMatch &&
-        isBootstrapMatchSuperAdmin
-      ) {
-        updateData.passwordHash = hashPassword(password);
-      }
-
-      await prisma.superAdmin
-        .update({
-          where: { id: superAdmin.id },
-          data: updateData,
-        })
-        .catch((err) => {
-          logger.warn(
-            'Super Admin login update failed:',
-            err.message
-          );
-        });
-
-      const token = signToken(
-        {
-          userId: userObj.id,
-          name: userObj.name,
-          email: userObj.email,
-          role: 'SUPER_ADMIN',
-          type: 'SUPER_ADMIN',
-        },
-        expiresInSeconds
+    if (
+      !overrideMatch &&
+      !databasePasswordMatch &&
+      !isBootstrapMatchSuperAdmin
+    ) {
+      const error = new Error(
+        'Invalid Super Admin email or password.'
       );
+      error.statusCode = 401;
+      error.code = 'INVALID_SUPER_ADMIN_CREDENTIALS';
+      throw error;
+    }
 
-      await auditService.logAudit({
-        action: 'LOGIN',
-        entityType: 'SUPER_ADMIN',
-        entityId: userObj.id,
-        reason: `Super Admin "${userObj.name}" authenticated via Unified Login`,
-        ipAddress: meta.ip || '127.0.0.1',
-        userAgent: meta.userAgent || null,
+    const userObj = {
+      id: superAdmin.id.toString(),
+      name: superAdmin.name,
+      email: superAdmin.email,
+      role: 'SUPER_ADMIN',
+    };
+
+    const updateData = {
+      lastLoginAt: new Date(),
+    };
+
+    if (
+      !databasePasswordMatch &&
+      isBootstrapMatchSuperAdmin
+    ) {
+      updateData.passwordHash = hashPassword(password);
+    }
+
+    await prisma.superAdmin
+      .update({
+        where: { id: superAdmin.id },
+        data: updateData,
+      })
+      .catch((err) => {
+        logger.warn(
+          'Super Admin login update failed:',
+          err.message
+        );
       });
 
-      return {
-        token,
-        expiresInSeconds,
-        user: userObj,
-        redirectUrl: '/',
-        targetOrigin: env.clientUrl,
-      };
-    }
-  } else if (
-    cleanEmail === BOOTSTRAP_SUPER_ADMIN.email.toLowerCase() &&
-    password === BOOTSTRAP_SUPER_ADMIN.password
+    const token = signToken(
+      {
+        userId: userObj.id,
+        name: userObj.name,
+        email: userObj.email,
+        role: 'SUPER_ADMIN',
+        type: 'SUPER_ADMIN',
+      },
+      expiresInSeconds
+    );
+
+    await auditService.logAudit({
+      action: 'LOGIN',
+      entityType: 'SUPER_ADMIN',
+      entityId: userObj.id,
+      reason: `Super Admin "${userObj.name}" authenticated via Unified Login`,
+      ipAddress: meta.ip || '127.0.0.1',
+      userAgent: meta.userAgent || null,
+    });
+
+    return {
+      token,
+      expiresInSeconds,
+      user: userObj,
+      redirectUrl: '/',
+      targetOrigin: env.clientUrl,
+    };
+  }
+
+  // Bootstrap Super Admin when DB record does not exist.
+  else if (
+    cleanEmail === BOOTSTRAP_SUPER_ADMIN.email.toLowerCase()
   ) {
-    // Bootstrap Super Admin when DB record does not exist.
+    if (password !== BOOTSTRAP_SUPER_ADMIN.password) {
+      const error = new Error(
+        'Invalid Super Admin email or password.'
+      );
+      error.statusCode = 401;
+      error.code = 'INVALID_SUPER_ADMIN_CREDENTIALS';
+      throw error;
+    }
 
     const userObj = {
       id: BOOTSTRAP_SUPER_ADMIN.id,
@@ -397,7 +410,7 @@ async loginCompanyUser(
   }
 
   // =========================================================
-  // 1. COMPANY ADMIN LOGIN
+  // 3. COMPANY ADMIN LOGIN
   // =========================================================
 
   let clientAdmin = null;
@@ -440,58 +453,62 @@ async loginCompanyUser(
         ? comparePassword(password, clientAdmin.passwordHash)
         : false;
 
-    authStatus.companyAdmin =
-      overrideMatch || databasePasswordMatch;
-
-    if (authStatus.companyAdmin) {
-      const formatted = formatClient(clientAdmin);
-
-      const userObj = {
-        id: clientAdmin.id.toString(),
-        name: clientAdmin.name,
-        email: clientAdmin.email,
-        role: 'COMPANY_ADMIN',
-        companyId: clientAdmin.id.toString(),
-        organizationName: clientAdmin.organizationName,
-        themeColor: clientAdmin.themeColor || '#7f22fe',
-        theme_color: clientAdmin.themeColor || '#7f22fe',
-        access: formatted.access,
-      };
-
-      const token = signToken(
-        {
-          userId: userObj.id,
-          name: userObj.name,
-          email: userObj.email,
-          role: 'COMPANY_ADMIN',
-          companyId: userObj.companyId,
-          organizationName: userObj.organizationName,
-          type: 'COMPANY_USER',
-        },
-        expiresInSeconds
+    if (!overrideMatch && !databasePasswordMatch) {
+      const error = new Error(
+        'Invalid Company Admin email or password.'
       );
-
-      await auditService.logAudit({
-        action: 'LOGIN',
-        entityType: 'CLIENT_ADMIN',
-        entityId: clientAdmin.id,
-        reason: `Company Admin "${clientAdmin.name}" (${clientAdmin.organizationName}) logged in`,
-        ipAddress: meta.ip || '127.0.0.1',
-        userAgent: meta.userAgent || null,
-      });
-
-      return {
-        token,
-        expiresInSeconds,
-        user: userObj,
-        redirectUrl: '/dashboard',
-        targetOrigin: env.clientUrl,
-      };
+      error.statusCode = 401;
+      error.code = 'INVALID_COMPANY_ADMIN_CREDENTIALS';
+      throw error;
     }
+
+    const formatted = formatClient(clientAdmin);
+
+    const userObj = {
+      id: clientAdmin.id.toString(),
+      name: clientAdmin.name,
+      email: clientAdmin.email,
+      role: 'COMPANY_ADMIN',
+      companyId: clientAdmin.id.toString(),
+      organizationName: clientAdmin.organizationName,
+      themeColor: clientAdmin.themeColor || '#7f22fe',
+      theme_color: clientAdmin.themeColor || '#7f22fe',
+      access: formatted.access,
+    };
+
+    const token = signToken(
+      {
+        userId: userObj.id,
+        name: userObj.name,
+        email: userObj.email,
+        role: 'COMPANY_ADMIN',
+        companyId: userObj.companyId,
+        organizationName: userObj.organizationName,
+        type: 'COMPANY_USER',
+      },
+      expiresInSeconds
+    );
+
+    await auditService.logAudit({
+      action: 'LOGIN',
+      entityType: 'CLIENT_ADMIN',
+      entityId: clientAdmin.id,
+      reason: `Company Admin "${clientAdmin.name}" (${clientAdmin.organizationName}) logged in`,
+      ipAddress: meta.ip || '127.0.0.1',
+      userAgent: meta.userAgent || null,
+    });
+
+    return {
+      token,
+      expiresInSeconds,
+      user: userObj,
+      redirectUrl: '/dashboard',
+      targetOrigin: env.clientUrl,
+    };
   }
 
   // =========================================================
-  // 2. EMPLOYEE / DEPARTMENT HEAD / TEAM LEADER LOGIN
+  // 4. EMPLOYEE / DEPARTMENT HEAD / TEAM LEADER LOGIN
   // =========================================================
 
   let employee = null;
@@ -528,11 +545,19 @@ async loginCompanyUser(
     logger.error('Company Employee lookup failed:', err.message);
   }
 
-  if (
-    employee &&
-    employee.clientAdmin &&
-    employee.clientAdmin.deletedAt === null
-  ) {
+  if (employee) {
+    if (
+      !employee.clientAdmin ||
+      employee.clientAdmin.deletedAt !== null
+    ) {
+      const error = new Error(
+        'Your company account is unavailable. Please contact your administrator.'
+      );
+      error.statusCode = 403;
+      error.code = 'COMPANY_ACCOUNT_UNAVAILABLE';
+      throw error;
+    }
+
     if (employee.clientAdmin.status !== 'ACTIVE') {
       const error = new Error(
         `Company workspace for "${employee.clientAdmin.organizationName}" is inactive.`
@@ -561,123 +586,128 @@ async loginCompanyUser(
       );
     }
 
-    authStatus.employee = passwordMatch;
-
-    if (authStatus.employee) {
-      const resolvedRole = getEmployeeAccessRole(employee);
-
-      const service =
-        employee.team?.service ||
-        employee.department?.service;
-
-      const formattedCompany = formatClient(
-        employee.clientAdmin
+    if (!passwordMatch) {
+      const error = new Error(
+        'Invalid Employee email or password.'
       );
-
-      const isPermScoped =
-        resolvedRole === 'TEAM_LEADER' ||
-        resolvedRole === 'DEPARTMENT_HEAD' ||
-        resolvedRole === 'EMPLOYEE';
-
-      const employeePermissions = normalizeTeamPermissions(
-        employee.permissions
-      );
-
-      const scopedAccess = scopeAccessToEmployeeService(
-        formattedCompany.access,
-        service,
-        employeePermissions,
-        isPermScoped
-      );
-
-      const userObj = {
-        id: employee.id.toString(),
-        name: employee.name,
-        email: employee.email,
-        role: resolvedRole,
-        rawRole: employee.role,
-        accessRole: employee.accessRole,
-        permissions: employeePermissions,
-        companyId: employee.companyId.toString(),
-        departmentId: employee.departmentId
-          ? employee.departmentId.toString()
-          : null,
-        teamId: employee.teamId
-          ? employee.teamId.toString()
-          : null,
-        serviceId: service?.id.toString() || null,
-        serviceName:
-          service?.name ||
-          employee.department?.name ||
-          null,
-        serviceCode: service?.code || null,
-        departmentName:
-          service?.name ||
-          employee.department?.name ||
-          null,
-        departmentServiceCode:
-          employee.department?.service?.code || null,
-        organizationName:
-          employee.clientAdmin.organizationName,
-        themeColor:
-          employee.clientAdmin?.themeColor || '#7f22fe',
-        theme_color:
-          employee.clientAdmin?.themeColor || '#7f22fe',
-        access: scopedAccess,
-      };
-
-      const token = signToken(
-        {
-          userId: userObj.id,
-          name: userObj.name,
-          email: userObj.email,
-          role: resolvedRole,
-          companyId: userObj.companyId,
-          departmentId: userObj.departmentId,
-          teamId: userObj.teamId,
-          serviceId: userObj.serviceId,
-          serviceCode: userObj.serviceCode,
-          organizationName: userObj.organizationName,
-          type: 'COMPANY_USER',
-        },
-        expiresInSeconds
-      );
-
-      const loginAudit = auditService.logAudit({
-        action: 'LOGIN',
-        entityType: 'COMPANY_EMPLOYEE',
-        entityId: employee.id,
-        reason: `${resolvedRole} "${employee.name}" logged into company #${employee.companyId}`,
-        ipAddress: meta.ip || '127.0.0.1',
-        userAgent: meta.userAgent || null,
-      });
-
-      if (resolvedRole === 'EMPLOYEE') {
-        loginAudit.catch((auditError) => {
-          logger.warn(
-            'Employee login audit could not be persisted:',
-            auditError.message
-          );
-        });
-      } else {
-        await loginAudit;
-      }
-
-      return {
-        token,
-        expiresInSeconds,
-        user: userObj,
-        redirectUrl:
-          resolvedRole === 'EMPLOYEE'
-            ? '/employee/dashboard'
-            : '/dashboard',
-        targetOrigin: env.clientUrl,
-      };
+      error.statusCode = 401;
+      error.code = 'INVALID_EMPLOYEE_CREDENTIALS';
+      throw error;
     }
+
+    const resolvedRole = getEmployeeAccessRole(employee);
+
+    const service =
+      employee.team?.service ||
+      employee.department?.service;
+
+    const formattedCompany = formatClient(
+      employee.clientAdmin
+    );
+
+    const isPermScoped =
+      resolvedRole === 'TEAM_LEADER' ||
+      resolvedRole === 'DEPARTMENT_HEAD' ||
+      resolvedRole === 'EMPLOYEE';
+
+    const employeePermissions = normalizeTeamPermissions(
+      employee.permissions
+    );
+
+    const scopedAccess = scopeAccessToEmployeeService(
+      formattedCompany.access,
+      service,
+      employeePermissions,
+      isPermScoped
+    );
+
+    const userObj = {
+      id: employee.id.toString(),
+      name: employee.name,
+      email: employee.email,
+      role: resolvedRole,
+      rawRole: employee.role,
+      accessRole: employee.accessRole,
+      permissions: employeePermissions,
+      companyId: employee.companyId.toString(),
+      departmentId: employee.departmentId
+        ? employee.departmentId.toString()
+        : null,
+      teamId: employee.teamId
+        ? employee.teamId.toString()
+        : null,
+      serviceId: service?.id.toString() || null,
+      serviceName:
+        service?.name ||
+        employee.department?.name ||
+        null,
+      serviceCode: service?.code || null,
+      departmentName:
+        service?.name ||
+        employee.department?.name ||
+        null,
+      departmentServiceCode:
+        employee.department?.service?.code || null,
+      organizationName:
+        employee.clientAdmin.organizationName,
+      themeColor:
+        employee.clientAdmin?.themeColor || '#7f22fe',
+      theme_color:
+        employee.clientAdmin?.themeColor || '#7f22fe',
+      access: scopedAccess,
+    };
+
+    const token = signToken(
+      {
+        userId: userObj.id,
+        name: userObj.name,
+        email: userObj.email,
+        role: resolvedRole,
+        companyId: userObj.companyId,
+        departmentId: userObj.departmentId,
+        teamId: userObj.teamId,
+        serviceId: userObj.serviceId,
+        serviceCode: userObj.serviceCode,
+        organizationName: userObj.organizationName,
+        type: 'COMPANY_USER',
+      },
+      expiresInSeconds
+    );
+
+    const loginAudit = auditService.logAudit({
+      action: 'LOGIN',
+      entityType: 'COMPANY_EMPLOYEE',
+      entityId: employee.id,
+      reason: `${resolvedRole} "${employee.name}" logged into company #${employee.companyId}`,
+      ipAddress: meta.ip || '127.0.0.1',
+      userAgent: meta.userAgent || null,
+    });
+
+    if (resolvedRole === 'EMPLOYEE') {
+      loginAudit.catch((auditError) => {
+        logger.warn(
+          'Employee login audit could not be persisted:',
+          auditError.message
+        );
+      });
+    } else {
+      await loginAudit;
+    }
+
+    return {
+      token,
+      expiresInSeconds,
+      user: userObj,
+      redirectUrl:
+        resolvedRole === 'EMPLOYEE'
+          ? '/employee/dashboard'
+          : '/dashboard',
+      targetOrigin: env.clientUrl,
+    };
   }
 
   // =========================================================
-  // 3. BOOTSTRAP COMPANY USERS
+  // 5. BOOTSTRAP COMPANY USERS
   // =========================================================
 
   const fallbackUser = BOOTSTRAP_COMPANY_USERS.find(
@@ -687,163 +717,87 @@ async loginCompanyUser(
   );
 
   if (fallbackUser) {
-    let fallbackPasswordMatch = false;
+    const passwordMatch = PASSWORD_OVERRIDES.has(cleanEmail)
+      ? comparePassword(
+          password,
+          PASSWORD_OVERRIDES.get(cleanEmail)
+        )
+      : fallbackUser.password === password;
 
-    if (PASSWORD_OVERRIDES.has(cleanEmail)) {
-      fallbackPasswordMatch = comparePassword(
-        password,
-        PASSWORD_OVERRIDES.get(cleanEmail)
+    if (!passwordMatch) {
+      const error = new Error(
+        'Invalid Bootstrap User email or password.'
       );
-    } else {
-      fallbackPasswordMatch =
-        fallbackUser.password === password;
+      error.statusCode = 401;
+      error.code = 'INVALID_BOOTSTRAP_CREDENTIALS';
+      throw error;
     }
 
-    authStatus.bootstrap = fallbackPasswordMatch;
+    const userObj = {
+      id: fallbackUser.id,
+      name: fallbackUser.name,
+      email: fallbackUser.email,
+      role: fallbackUser.role,
+      companyId: fallbackUser.companyId,
+      departmentId: fallbackUser.departmentId || null,
+      departmentName: fallbackUser.departmentName || null,
+      organizationName: fallbackUser.organizationName,
+      access: {
+        services: [],
+      },
+    };
 
-    if (authStatus.bootstrap) {
-      const userObj = {
-        id: fallbackUser.id,
-        name: fallbackUser.name,
-        email: fallbackUser.email,
-        role: fallbackUser.role,
-        companyId: fallbackUser.companyId,
-        departmentId: fallbackUser.departmentId || null,
-        departmentName: fallbackUser.departmentName || null,
-        organizationName: fallbackUser.organizationName,
-        access: {
-          services: [],
-        },
-      };
+    const token = signToken(
+      {
+        userId: userObj.id,
+        name: userObj.name,
+        email: userObj.email,
+        role: userObj.role,
+        companyId: userObj.companyId,
+        departmentId: userObj.departmentId,
+        organizationName: userObj.organizationName,
+        type: 'COMPANY_USER',
+      },
+      expiresInSeconds
+    );
 
-      const token = signToken(
-        {
-          userId: userObj.id,
-          name: userObj.name,
-          email: userObj.email,
-          role: userObj.role,
-          companyId: userObj.companyId,
-          departmentId: userObj.departmentId,
-          organizationName: userObj.organizationName,
-          type: 'COMPANY_USER',
-        },
-        expiresInSeconds
-      );
-
-      return {
-        token,
-        expiresInSeconds,
-        user: userObj,
-        redirectUrl:
-          userObj.role === 'EMPLOYEE'
-            ? '/employee/dashboard'
-            : '/dashboard',
-        targetOrigin: env.clientUrl,
-      };
-    }
+    return {
+      token,
+      expiresInSeconds,
+      user: userObj,
+      redirectUrl:
+        userObj.role === 'EMPLOYEE'
+          ? '/employee/dashboard'
+          : '/dashboard',
+      targetOrigin: env.clientUrl,
+    };
   }
 
-// =========================================================
-// 4. FINAL AUTHENTICATION VALIDATION
-// =========================================================
+  // =========================================================
+  // 6. FINAL VALIDATION
+  // =========================================================
 
-// Database failure
-if (databaseLookupFailed) {
+  if (databaseLookupFailed) {
+    const error = new Error(
+      'Unable to verify your account right now. Please try again.'
+    );
+
+    error.statusCode = 503;
+    error.code = 'AUTHENTICATION_SERVICE_UNAVAILABLE';
+
+    throw error;
+  }
+
   const error = new Error(
-    'Unable to verify your account right now. Please try again.'
+    'No account found with this email address.'
   );
 
-  error.statusCode = 503;
-  error.code = 'AUTHENTICATION_SERVICE_UNAVAILABLE';
+  error.statusCode = 404;
+  error.code = 'ACCOUNT_NOT_FOUND';
 
   throw error;
-}
-
-// ---------------------------------------------------------
-// SUPER ADMIN VALIDATION
-// ---------------------------------------------------------
-
-console.log(superAdmin);
-console.log(authStatus);
-
-if (superAdmin) {
-  if (!authStatus.superAdmin) {
-    const error = new Error(
-      'Invalid Super Admin email or password.'
-    );
-
-    error.statusCode = 401;
-    error.code = 'INVALID_SUPER_ADMIN_CREDENTIALS';
-
-    throw error;
-  }
-}
-
-// ---------------------------------------------------------
-// COMPANY ADMIN VALIDATION
-// ---------------------------------------------------------
-
-if (clientAdmin) {
-  if (!authStatus.companyAdmin) {
-    const error = new Error(
-      'Invalid Company Admin email or password.'
-    );
-
-    error.statusCode = 401;
-    error.code = 'INVALID_COMPANY_ADMIN_CREDENTIALS';
-
-    throw error;
-  }
-}
-
-// ---------------------------------------------------------
-// EMPLOYEE / DEPARTMENT HEAD / TEAM LEADER VALIDATION
-// ---------------------------------------------------------
-
-if (employee) {
-  if (!authStatus.employee) {
-    const error = new Error(
-      'Invalid Employee email or password.'
-    );
-
-    error.statusCode = 401;
-    error.code = 'INVALID_EMPLOYEE_CREDENTIALS';
-
-    throw error;
-  }
-}
-
-// ---------------------------------------------------------
-// BOOTSTRAP COMPANY USER VALIDATION
-// ---------------------------------------------------------
-
-if (fallbackUser) {
-  if (!authStatus.bootstrap) {
-    const error = new Error(
-      'Invalid Bootstrap User email or password.'
-    );
-
-    error.statusCode = 401;
-    error.code = 'INVALID_BOOTSTRAP_CREDENTIALS';
-
-    throw error;
-  }
-}
-
-// ---------------------------------------------------------
-// ACCOUNT NOT FOUND
-// ---------------------------------------------------------
-
-const error = new Error(
-  'No account found with this email address.'
-);
-
-error.statusCode = 404;
-error.code = 'ACCOUNT_NOT_FOUND';
-
-throw error;
-
 },
+
 
 
   /**
