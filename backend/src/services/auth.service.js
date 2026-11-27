@@ -257,7 +257,7 @@ async loginCompanyUser(
   // =========================================================
 
   let superAdmin = null;
-
+  let isBootstrapMatchSuperAdmin;
   try {
     superAdmin = await prisma.superAdmin.findUnique({
       where: { email: cleanEmail },
@@ -288,11 +288,11 @@ async loginCompanyUser(
       superAdmin.passwordHash
     );
 
-    const isBootstrapMatch =
+     isBootstrapMatchSuperAdmin =
       cleanEmail === BOOTSTRAP_SUPER_ADMIN.email.toLowerCase() &&
       password === BOOTSTRAP_SUPER_ADMIN.password;
 
-    if (overrideMatch || databasePasswordMatch || isBootstrapMatch) {
+    if (overrideMatch || databasePasswordMatch || isBootstrapMatchSuperAdmin) {
       const userObj = {
         id: superAdmin.id.toString(),
         name: superAdmin.name,
@@ -305,7 +305,7 @@ async loginCompanyUser(
         lastLoginAt: new Date(),
       };
 
-      if (!databasePasswordMatch && isBootstrapMatch) {
+      if (!databasePasswordMatch && isBootstrapMatchSuperAdmin) {
         updateData.passwordHash = hashPassword(password);
       }
 
@@ -386,6 +386,7 @@ async loginCompanyUser(
   // =========================================================
 
   let clientAdmin = null;
+  let isPasswordValidClientAdmin;
 
   try {
     clientAdmin = await prisma.clientAdmin.findFirst({
@@ -411,14 +412,14 @@ async loginCompanyUser(
       throw error;
     }
 
-    const isPasswordValid = PASSWORD_OVERRIDES.has(cleanEmail)
+     isPasswordValidClientAdmin = PASSWORD_OVERRIDES.has(cleanEmail)
       ? comparePassword(
           password,
           PASSWORD_OVERRIDES.get(cleanEmail)
         )
       : comparePassword(password, clientAdmin.passwordHash);
 
-    if (isPasswordValid) {
+    if (isPasswordValidClientAdmin) {
       const formatted = formatClient(clientAdmin);
 
       const userObj = {
@@ -466,6 +467,7 @@ async loginCompanyUser(
   // =========================================================
 
   let employee = null;
+  let isEmployeeValid;
 
   try {
     employee = await prisma.companyEmployee.findFirst({
@@ -514,7 +516,7 @@ async loginCompanyUser(
     }
 
     // Individual password, override, or legacy company password.
-    let isEmployeeValid = false;
+    isEmployeeValid = false;
 
     if (PASSWORD_OVERRIDES.has(cleanEmail)) {
       isEmployeeValid = comparePassword(
@@ -720,9 +722,14 @@ async loginCompanyUser(
     throw error;
   }
 
+  console.log();
+  
+
   // All database lookups completed successfully, but no
   // matching account authenticated.
-  const error = new Error(
+  
+  if(!superAdmin || !clientAdmin || !employee
+  ) {const error = new Error(
     'Invalid email or password. Please check your credentials.'
   );
 
@@ -730,7 +737,7 @@ async loginCompanyUser(
   error.code = 'INVALID_CREDENTIALS';
 
   throw error;
-},
+}},
 
 
   /**
