@@ -763,6 +763,9 @@ if (databaseLookupFailed) {
 // SUPER ADMIN VALIDATION
 // ---------------------------------------------------------
 
+console.log(superAdmin);
+console.log(authStatus);
+
 if (superAdmin) {
   if (!authStatus.superAdmin) {
     const error = new Error(
