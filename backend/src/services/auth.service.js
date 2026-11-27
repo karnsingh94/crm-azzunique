@@ -297,18 +297,6 @@ async loginCompanyUser(
       cleanEmail === BOOTSTRAP_SUPER_ADMIN.email.toLowerCase() &&
       password === BOOTSTRAP_SUPER_ADMIN.password;
 
-    if (
-      !overrideMatch &&
-      !databasePasswordMatch &&
-      !isBootstrapMatchSuperAdmin
-    ) {
-      const error = new Error(
-        'Invalid Super Admin email or password.'
-      );
-      error.statusCode = 401;
-      error.code = 'INVALID_SUPER_ADMIN_CREDENTIALS';
-      throw error;
-    }
 
     const userObj = {
       id: superAdmin.id.toString(),
