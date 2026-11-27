@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { authenticatedFetch as fetch } from '@/lib/api';
+import { authenticatedFetch as fetch, API_BASE, getApiBaseUrl } from '@/lib/api';
 import { clearStoredSession } from '@/lib/auth';
 import styles from './SuperAdminPortal.module.css';
 import SuperAdminBreadcrumbs from '@/components/navigation/SuperAdminBreadcrumbs';
@@ -425,8 +425,6 @@ export default function SuperAdminPortal({ initialTab, initialServiceId }) {
   });
   const [clientAccessTree, setClientAccessTree] = useState({ services: [] });
   const [showClientPassword, setShowClientPassword] = useState(false);
-
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://crm.azzunique.in/api';
 
   // Toast Trigger Helper
   const showToast = (titleOrToast, message, type = 'success') => {
