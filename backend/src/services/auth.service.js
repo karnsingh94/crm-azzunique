@@ -743,37 +743,103 @@ async loginCompanyUser(
     }
   }
 
-  // =========================================================
-  // 4. FINAL AUTHENTICATION VALIDATION
-  // =========================================================
+// =========================================================
+// 4. FINAL AUTHENTICATION VALIDATION
+// =========================================================
 
-  logger.info('Login authentication result', {
-    email: cleanEmail,
-    companyId: companyId || null,
-    authStatus,
-    databaseLookupFailed,
-  });
+// Database failure
+if (databaseLookupFailed) {
+  const error = new Error(
+    'Unable to verify your account right now. Please try again.'
+  );
 
-  if (databaseLookupFailed) {
+  error.statusCode = 503;
+  error.code = 'AUTHENTICATION_SERVICE_UNAVAILABLE';
+
+  throw error;
+}
+
+// ---------------------------------------------------------
+// SUPER ADMIN VALIDATION
+// ---------------------------------------------------------
+
+if (superAdmin) {
+  if (!authStatus.superAdmin) {
     const error = new Error(
-      'Unable to verify your account right now. Please try again.'
+      'Invalid Super Admin email or password.'
     );
 
-    error.statusCode = 503;
-    error.code = 'AUTHENTICATION_SERVICE_UNAVAILABLE';
+    error.statusCode = 401;
+    error.code = 'INVALID_SUPER_ADMIN_CREDENTIALS';
 
     throw error;
   }
+}
 
-  // No account successfully authenticated.
-  const error = new Error(
-    'Invalid email or password. Please check your credentials.'
-  );
+// ---------------------------------------------------------
+// COMPANY ADMIN VALIDATION
+// ---------------------------------------------------------
 
-  error.statusCode = 401;
-  error.code = 'INVALID_CREDENTIALS';
+if (clientAdmin) {
+  if (!authStatus.companyAdmin) {
+    const error = new Error(
+      'Invalid Company Admin email or password.'
+    );
 
-  throw error;
+    error.statusCode = 401;
+    error.code = 'INVALID_COMPANY_ADMIN_CREDENTIALS';
+
+    throw error;
+  }
+}
+
+// ---------------------------------------------------------
+// EMPLOYEE / DEPARTMENT HEAD / TEAM LEADER VALIDATION
+// ---------------------------------------------------------
+
+if (employee) {
+  if (!authStatus.employee) {
+    const error = new Error(
+      'Invalid Employee email or password.'
+    );
+
+    error.statusCode = 401;
+    error.code = 'INVALID_EMPLOYEE_CREDENTIALS';
+
+    throw error;
+  }
+}
+
+// ---------------------------------------------------------
+// BOOTSTRAP COMPANY USER VALIDATION
+// ---------------------------------------------------------
+
+if (fallbackUser) {
+  if (!authStatus.bootstrap) {
+    const error = new Error(
+      'Invalid Bootstrap User email or password.'
+    );
+
+    error.statusCode = 401;
+    error.code = 'INVALID_BOOTSTRAP_CREDENTIALS';
+
+    throw error;
+  }
+}
+
+// ---------------------------------------------------------
+// ACCOUNT NOT FOUND
+// ---------------------------------------------------------
+
+const error = new Error(
+  'No account found with this email address.'
+);
+
+error.statusCode = 404;
+error.code = 'ACCOUNT_NOT_FOUND';
+
+throw error;
+
 },
 
 
