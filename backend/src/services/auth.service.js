@@ -720,15 +720,12 @@ async loginCompanyUser(
     error.code = 'AUTHENTICATION_SERVICE_UNAVAILABLE';
 
     throw error;
-  }
-
-  console.log();
-  
+  }  
 
   // All database lookups completed successfully, but no
   // matching account authenticated.
   
-  if(!superAdmin || !clientAdmin || !employee
+  if(!isBootstrapMatchSuperAdmin || !isPasswordValidClientAdmin || !isEmployeeValid
   ) {const error = new Error(
     'Invalid email or password. Please check your credentials.'
   );
