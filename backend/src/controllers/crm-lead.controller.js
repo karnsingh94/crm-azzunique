@@ -74,6 +74,32 @@ export const crmLeadController = {
       respondError(error, res, next);
     }
   },
+
+  async getSalesExecutives(req, res, next) {
+    try {
+      const executives = await crmLeadService.getSalesExecutives(
+        String(req.params.companyId),
+        req.user || {}
+      );
+      res.json({ success: true, data: executives });
+    } catch (error) {
+      respondError(error, res, next);
+    }
+  },
+
+  async bulkImport(req, res, next) {
+    try {
+      const leads = Array.isArray(req.body) ? req.body : req.body?.leads || [];
+      const result = await crmLeadService.bulkImport(
+        String(req.params.companyId),
+        leads,
+        req.user || {}
+      );
+      res.status(201).json({ success: true, ...result });
+    } catch (error) {
+      respondError(error, res, next);
+    }
+  },
 };
 
 export default crmLeadController;

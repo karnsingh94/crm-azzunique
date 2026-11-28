@@ -200,6 +200,267 @@ export default function CrmModule({ activeCompany, showToast, initialSubTab, has
   });
   const [leadIntegrations, setLeadIntegrations] = useState([]);
 
+  // Sales executives & employees available for assignment
+  const [salesExecutives, setSalesExecutives] = useState([]);
+  const [isLoadingExecutives, setIsLoadingExecutives] = useState(false);
+  const [executiveSearchQuery, setExecutiveSearchQuery] = useState('');
+  const [isExecutiveDropdownOpen, setIsExecutiveDropdownOpen] = useState(false);
+
+  // Bulk Import Leads States
+  const [showBulkImportModal, setShowBulkImportModal] = useState(false);
+  const [bulkImportTab, setBulkImportTab] = useState('file'); // 'file' | 'text'
+  const [bulkImportText, setBulkImportText] = useState('');
+  const [bulkImportFileName, setBulkImportFileName] = useState('');
+  const [bulkParsedRows, setBulkParsedRows] = useState([]);
+  const [bulkDefaultSource, setBulkDefaultSource] = useState('Bulk Import');
+  const [bulkDefaultExecutive, setBulkDefaultExecutive] = useState('');
+  const [isImportingLeads, setIsImportingLeads] = useState(false);
+
+  useEffect(() => {
+    if (!activeCompany?.id) return;
+    let isCurrent = true;
+    const fetchExecutives = async () => {
+      setIsLoadingExecutives(true);
+      try {
+        const res = await api.get(`/companies/${activeCompany.id}/crm/sales-executives`);
+        if (isCurrent && res.data) {
+          setSalesExecutives(Array.isArray(res.data) ? res.data : []);
+        }
+      } catch (err) {
+        console.warn('Could not fetch sales executives:', err);
+      } finally {
+        if (isCurrent) setIsLoadingExecutives(false);
+      }
+    };
+    fetchExecutives();
+    return () => { isCurrent = false; };
+  }, [activeCompany?.id]);
+
+  const filteredExecutives = salesExecutives.filter((emp) => {
+    if (!executiveSearchQuery.trim()) return true;
+    const q = executiveSearchQuery.toLowerCase();
+    return (
+      emp.name?.toLowerCase().includes(q) ||
+      emp.email?.toLowerCase().includes(q) ||
+      emp.roleLabel?.toLowerCase().includes(q) ||
+      emp.designation?.toLowerCase().includes(q)
+    );
+  });
+
+  const handleDownloadSampleTemplate = () => {
+    const headers = [
+      'Contact Full Name',
+      'Company / Organization',
+      'Email Address',
+      'Phone Number',
+      'Estimated Deal Value',
+      'Lead Source',
+      'Customer Requirement',
+      'Assigned Sales Executive',
+      'Status',
+    ];
+    const sampleExecutive = salesExecutives[0]?.name || 'Karan Singh';
+    const sampleRows = [
+      [
+        'Ramesh Kulkarni',
+        'Kulkarni Enterprises',
+        'ramesh@example.com',
+        '9876543210',
+        '350000',
+        'Website Form',
+        'Inquired for 50 Units of Laptops (Core i7, 16GB RAM) + 50 Wireless Mice',
+        sampleExecutive,
+        'NEW',
+      ],
+      [
+        'Pooja Sharma',
+        'Sharma Tech Solutions',
+        'pooja@sharmatech.in',
+        '9812345678',
+        '180000',
+        'IndiaMART',
+        'Required 20 Desktop Monitors and accessories',
+        sampleExecutive,
+        'NEW',
+      ],
+      [
+        'Amitabh Verma',
+        'Apex Logistics Hub',
+        'amitabh@apexlogistics.com',
+        '9899887766',
+        '550000',
+        'Manual',
+        'Fleet GPS tracking sensors and software requirement',
+        '',
+        'CONTACTED',
+      ],
+    ];
+
+    const csvContent = [
+      headers.join(','),
+      ...sampleRows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')),
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'crm_leads_sample_template.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const processRawCSV = (text) => {
+    if (!text || !text.trim()) {
+      setBulkParsedRows([]);
+      return;
+    }
+    const lines = text.trim().split(/\r?\n/).filter((l) => l.trim().length > 0);
+    if (lines.length < 2) {
+      setBulkParsedRows([]);
+      return;
+    }
+
+    const parseLine = (line) => {
+      const values = [];
+      let current = '';
+      let insideQuote = false;
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if (char === '"') {
+          if (insideQuote && line[i + 1] === '"') {
+            current += '"';
+            i++;
+          } else {
+            insideQuote = !insideQuote;
+          }
+        } else if ((char === ',' || char === '\t') && !insideQuote) {
+          values.push(current.trim());
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      values.push(current.trim());
+      return values;
+    };
+
+    const headers = parseLine(lines[0]).map((h) => h.toLowerCase().replace(/[^a-z0-9]/g, ''));
+    const rows = [];
+
+    for (let i = 1; i < lines.length; i++) {
+      const cells = parseLine(lines[i]);
+      if (cells.every((c) => !c.trim())) continue;
+
+      const getVal = (...keys) => {
+        for (const k of keys) {
+          const idx = headers.findIndex((h) => h.includes(k));
+          if (idx !== -1 && cells[idx] !== undefined) return cells[idx];
+        }
+        return '';
+      };
+
+      const name = getVal('name', 'contact') || cells[0] || '';
+      const company = getVal('comp', 'org') || cells[1] || '';
+      const email = getVal('email', 'mail') || cells[2] || '';
+      const rawPhone = getVal('phone', 'mob', 'contactno', 'tel') || cells[3] || '';
+      const cleanPhone = rawPhone.replace(/\D/g, '').slice(-10);
+      const value = getVal('value', 'deal', 'amount', 'estimate') || cells[4] || '';
+      const source = getVal('source', 'channel') || cells[5] || bulkDefaultSource;
+      const requirements = getVal('req', 'note', 'spec', 'detail') || cells[6] || '';
+      const assignedTo = getVal('assign', 'exec', 'handle', 'rep') || cells[7] || bulkDefaultExecutive;
+      const status = (getVal('status') || cells[8] || 'NEW').toUpperCase();
+
+      const validationErrors = [];
+      if (!name.trim()) validationErrors.push('Missing contact name');
+      if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+        validationErrors.push('Invalid or missing email');
+      }
+      if (cleanPhone && cleanPhone.length !== 10) {
+        validationErrors.push('Phone must be 10 digits');
+      }
+
+      rows.push({
+        id: `row-${i}`,
+        rowNumber: i,
+        name: name.trim(),
+        company: company.trim(),
+        email: email.trim().toLowerCase(),
+        phone: cleanPhone,
+        value: value.trim(),
+        source: source.trim() || bulkDefaultSource,
+        requirements: requirements.trim(),
+        assignedTo: assignedTo.trim() || bulkDefaultExecutive,
+        status: ['NEW', 'CONTACTED', 'QUALIFIED', 'PROPOSAL', 'WON', 'LOST'].includes(status) ? status : 'NEW',
+        isValid: validationErrors.length === 0,
+        errors: validationErrors,
+      });
+    }
+
+    setBulkParsedRows(rows);
+  };
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setBulkImportFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result;
+      if (typeof text === 'string') {
+        processRawCSV(text);
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleSubmitBulkImport = async () => {
+    const validRows = bulkParsedRows.filter((r) => r.isValid);
+    if (validRows.length === 0) {
+      showToast('No Valid Leads', 'Please correct the errors in the CSV before importing.', 'danger');
+      return;
+    }
+
+    setIsImportingLeads(true);
+
+    try {
+      const payload = validRows.map((r) => ({
+        name: r.name,
+        company: r.company || null,
+        email: r.email,
+        phone: r.phone || null,
+        value: r.value || null,
+        source: r.source || bulkDefaultSource,
+        requirements: r.requirements || null,
+        assignedTo: r.assignedTo || bulkDefaultExecutive || null,
+        status: r.status || 'NEW',
+      }));
+
+      const res = await api.post(`/companies/${activeCompany.id}/crm/leads/bulk-import`, payload);
+
+      if (res.imported && Array.isArray(res.imported)) {
+        setLeads((current) => [...res.imported, ...current]);
+      } else if (res.data?.imported && Array.isArray(res.data.imported)) {
+        setLeads((current) => [...res.data.imported, ...current]);
+      } else {
+        setLeadLoadVersion((v) => v + 1);
+      }
+
+      const importedCount = res.count || res.data?.count || validRows.length;
+      showToast('Bulk Import Successful! 🎯', `Successfully imported ${importedCount} leads into the pipeline.`, 'success');
+      setShowBulkImportModal(false);
+      setBulkParsedRows([]);
+      setBulkImportFileName('');
+      setBulkImportText('');
+    } catch (err) {
+      showToast('Import Failed', err.message || 'Could not import leads.', 'danger');
+    } finally {
+      setIsImportingLeads(false);
+    }
+  };
+
   useEffect(() => {
     if (!activeCompany?.id || (currentUser?.role === 'EMPLOYEE' && !isLeadsAllowed)) return;
     let isCurrent = true;
@@ -1691,6 +1952,35 @@ export default function CrmModule({ activeCompany, showToast, initialSubTab, has
                 <span>🇮🇳</span> {isSyncingIndiaMart ? 'Syncing...' : 'Sync IndiaMART'}
               </button>
             )}
+
+            <button
+              type="button"
+              onClick={() => {
+                if (!canPerformAction('leads')) {
+                  showToast('View Only Mode', 'You have view-only access to Leads.', 'danger');
+                  return;
+                }
+                setShowBulkImportModal(true);
+              }}
+              title={!canPerformAction('leads') ? '🔒 View Only' : 'Bulk Import Leads from CSV / Excel'}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.45rem',
+                padding: '0.62rem 1.15rem',
+                background: '#ffffff',
+                color: !canPerformAction('leads') ? '#94a3b8' : '#334155',
+                border: '1px solid #cbd5e1',
+                borderRadius: '8px',
+                fontWeight: 700,
+                fontSize: '0.84rem',
+                cursor: !canPerformAction('leads') ? 'not-allowed' : 'pointer',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <IconFileText size={15} /> Bulk Import Leads
+            </button>
 
             <button
               type="button"
@@ -3835,16 +4125,221 @@ export default function CrmModule({ activeCompany, showToast, initialSubTab, has
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '0.35rem', color: '#334155' }}>
-              Assigned Sales Executive / Handled By
-            </label>
-            <input
-              type="text"
-              placeholder="e.g. Karan / Alok (Name of sales executive handling this lead)"
-              value={newLeadForm.assignedTo}
-              onChange={(e) => setNewLeadForm({ ...newLeadForm, assignedTo: e.target.value })}
-              style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#0f172a', fontSize: '0.84rem' }}
-            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+              <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#334155' }}>
+                Assigned Sales Executive / Handled By
+              </label>
+              {newLeadForm.assignedTo && (
+                <button
+                  type="button"
+                  onClick={() => setNewLeadForm({ ...newLeadForm, assignedTo: '' })}
+                  style={{ fontSize: '0.72rem', color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                >
+                  Clear Selection
+                </button>
+              )}
+            </div>
+
+            <div style={{ position: 'relative' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '0.55rem 0.85rem',
+                  borderRadius: '6px',
+                  border: isExecutiveDropdownOpen ? '1px solid #7f22fe' : '1px solid #cbd5e1',
+                  background: '#ffffff',
+                  cursor: 'pointer',
+                  boxShadow: isExecutiveDropdownOpen ? '0 0 0 2px rgba(127, 34, 254, 0.15)' : 'none',
+                }}
+                onClick={() => setIsExecutiveDropdownOpen(!isExecutiveDropdownOpen)}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden' }}>
+                  {newLeadForm.assignedTo ? (
+                    <>
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '24px',
+                        height: '24px',
+                        borderRadius: '50%',
+                        background: '#ede9fe',
+                        color: '#7f22fe',
+                        fontSize: '0.72rem',
+                        fontWeight: 700,
+                      }}>
+                        {newLeadForm.assignedTo.slice(0, 2).toUpperCase()}
+                      </span>
+                      <span style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.86rem' }}>
+                        {newLeadForm.assignedTo}
+                      </span>
+                      {salesExecutives.find((e) => e.name.toLowerCase() === newLeadForm.assignedTo.toLowerCase())?.roleLabel && (
+                        <span style={{
+                          fontSize: '0.68rem',
+                          padding: '1px 6px',
+                          borderRadius: '4px',
+                          background: '#f1f5f9',
+                          color: '#475569',
+                          fontWeight: 600,
+                        }}>
+                          {salesExecutives.find((e) => e.name.toLowerCase() === newLeadForm.assignedTo.toLowerCase())?.roleLabel}
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <span style={{ color: '#94a3b8', fontSize: '0.84rem' }}>
+                      Select sales executive / employee (or search)...
+                    </span>
+                  )}
+                </div>
+                <span style={{ color: '#64748b', fontSize: '0.75rem' }}>▼</span>
+              </div>
+
+              {/* Searchable Dropdown Menu */}
+              {isExecutiveDropdownOpen && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 4px)',
+                    left: 0,
+                    right: 0,
+                    background: '#ffffff',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '8px',
+                    boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)',
+                    zIndex: 100,
+                    padding: '0.5rem',
+                    maxHeight: '260px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                  }}
+                >
+                  {/* Search Input Filter */}
+                  <div style={{ position: 'relative', marginBottom: '0.45rem' }}>
+                    <input
+                      type="text"
+                      autoFocus
+                      placeholder="🔍 Search employee by name, email, role..."
+                      value={executiveSearchQuery}
+                      onChange={(e) => setExecutiveSearchQuery(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      style={{
+                        width: '100%',
+                        padding: '0.45rem 0.65rem',
+                        borderRadius: '6px',
+                        border: '1px solid #e2e8f0',
+                        fontSize: '0.8rem',
+                        outline: 'none',
+                        background: '#f8fafc',
+                      }}
+                    />
+                  </div>
+
+                  {/* Employees List */}
+                  <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    {filteredExecutives.length === 0 ? (
+                      <div style={{ padding: '0.75rem', textAlign: 'center', fontSize: '0.78rem', color: '#64748b' }}>
+                        No employees found matching &quot;{executiveSearchQuery}&quot;.
+                        {executiveSearchQuery.trim() && (
+                          <div style={{ marginTop: '0.4rem' }}>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setNewLeadForm({ ...newLeadForm, assignedTo: executiveSearchQuery.trim() });
+                                setIsExecutiveDropdownOpen(false);
+                                setExecutiveSearchQuery('');
+                              }}
+                              style={{
+                                padding: '3px 8px',
+                                borderRadius: '4px',
+                                border: '1px solid #7f22fe',
+                                background: '#f5f3ff',
+                                color: '#7f22fe',
+                                fontSize: '0.74rem',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                              }}
+                            >
+                              Assign as &quot;{executiveSearchQuery.trim()}&quot; (Custom Name)
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      filteredExecutives.map((emp) => {
+                        const isSelected = newLeadForm.assignedTo?.toLowerCase() === emp.name.toLowerCase();
+                        return (
+                          <div
+                            key={emp.id}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setNewLeadForm({ ...newLeadForm, assignedTo: emp.name });
+                              setIsExecutiveDropdownOpen(false);
+                              setExecutiveSearchQuery('');
+                            }}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '0.5rem 0.65rem',
+                              borderRadius: '6px',
+                              background: isSelected ? '#f5f3ff' : 'transparent',
+                              cursor: 'pointer',
+                              transition: 'background 0.15s ease',
+                            }}
+                            onMouseEnter={(e) => {
+                              if (!isSelected) e.currentTarget.style.background = '#f8fafc';
+                            }}
+                            onMouseLeave={(e) => {
+                              if (!isSelected) e.currentTarget.style.background = 'transparent';
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <span style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: '28px',
+                                height: '28px',
+                                borderRadius: '50%',
+                                background: emp.role === 'COMPANY_ADMIN' ? '#fae8ff' : emp.role === 'DEPARTMENT_HEAD' ? '#e0f2fe' : '#ede9fe',
+                                color: emp.role === 'COMPANY_ADMIN' ? '#86198f' : emp.role === 'DEPARTMENT_HEAD' ? '#0369a1' : '#7f22fe',
+                                fontSize: '0.72rem',
+                                fontWeight: 700,
+                              }}>
+                                {emp.name.slice(0, 2).toUpperCase()}
+                              </span>
+                              <div>
+                                <div style={{ fontSize: '0.84rem', fontWeight: 600, color: '#0f172a' }}>
+                                  {emp.name}
+                                </div>
+                                <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                                  {emp.email}
+                                </div>
+                              </div>
+                            </div>
+
+                            <span style={{
+                              fontSize: '0.68rem',
+                              padding: '2px 6px',
+                              borderRadius: '4px',
+                              background: emp.role === 'COMPANY_ADMIN' ? '#fae8ff' : emp.role === 'DEPARTMENT_HEAD' ? '#e0f2fe' : '#f1f5f9',
+                              color: emp.role === 'COMPANY_ADMIN' ? '#86198f' : emp.role === 'DEPARTMENT_HEAD' ? '#0369a1' : '#475569',
+                              fontWeight: 600,
+                            }}>
+                              {emp.roleLabel || emp.designation || 'Employee'}
+                            </span>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
@@ -3864,6 +4359,371 @@ export default function CrmModule({ activeCompany, showToast, initialSubTab, has
             </button>
           </div>
         </form>
+      </Modal>
+
+      {/* ------------------------------------------------------------- */}
+      {/* MODAL 1A: BULK IMPORT LEADS */}
+      {/* ------------------------------------------------------------- */}
+      <Modal
+        isOpen={showBulkImportModal}
+        onClose={() => {
+          setShowBulkImportModal(false);
+          setBulkParsedRows([]);
+          setBulkImportFileName('');
+          setBulkImportText('');
+        }}
+        title="📥 Bulk Import Leads into Pipeline"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', maxWidth: '850px' }}>
+          {/* Header Description & Sample Template Download */}
+          <div
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '1rem',
+              padding: '1rem 1.15rem',
+              borderRadius: '8px',
+              background: 'linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)',
+              border: '1px solid #ddd6fe',
+            }}
+          >
+            <div>
+              <h4 style={{ margin: 0, fontSize: '0.92rem', fontWeight: 800, color: '#5b21b6' }}>
+                Quick Multi-Lead Ingestion
+              </h4>
+              <p style={{ margin: '0.25rem 0 0', fontSize: '0.78rem', color: '#6d28d9' }}>
+                Upload your CSV file or paste lead columns directly. Download our sample format below for reference.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleDownloadSampleTemplate}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.45rem',
+                padding: '0.55rem 1rem',
+                borderRadius: '6px',
+                background: '#ffffff',
+                border: '1px solid #7f22fe',
+                color: '#7f22fe',
+                fontWeight: 700,
+                fontSize: '0.8rem',
+                cursor: 'pointer',
+                boxShadow: '0 2px 4px rgba(127, 34, 254, 0.1)',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <span>📥</span> Download Sample Template (.CSV)
+            </button>
+          </div>
+
+          {/* Import Modes: File Upload vs Copy-Paste */}
+          <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', gap: '1.5rem' }}>
+            <button
+              type="button"
+              onClick={() => setBulkImportTab('file')}
+              style={{
+                padding: '0.6rem 0.2rem',
+                border: 'none',
+                background: 'none',
+                fontWeight: 700,
+                fontSize: '0.85rem',
+                color: bulkImportTab === 'file' ? '#7f22fe' : '#64748b',
+                borderBottom: bulkImportTab === 'file' ? '2.5px solid #7f22fe' : '2.5px solid transparent',
+                cursor: 'pointer',
+              }}
+            >
+              📁 Upload CSV / TSV File
+            </button>
+            <button
+              type="button"
+              onClick={() => setBulkImportTab('text')}
+              style={{
+                padding: '0.6rem 0.2rem',
+                border: 'none',
+                background: 'none',
+                fontWeight: 700,
+                fontSize: '0.85rem',
+                color: bulkImportTab === 'text' ? '#7f22fe' : '#64748b',
+                borderBottom: bulkImportTab === 'text' ? '2.5px solid #7f22fe' : '2.5px solid transparent',
+                cursor: 'pointer',
+              }}
+            >
+              📋 Copy &amp; Paste Table Data
+            </button>
+          </div>
+
+          {/* Tab 1: File Upload */}
+          {bulkImportTab === 'file' && (
+            <div>
+              <label
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.65rem',
+                  padding: '2rem 1.5rem',
+                  border: '2px dashed #cbd5e1',
+                  borderRadius: '8px',
+                  background: '#f8fafc',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  textAlign: 'center',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#7f22fe')}
+                onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#cbd5e1')}
+              >
+                <input
+                  type="file"
+                  accept=".csv,.txt,.tsv"
+                  onChange={handleFileUpload}
+                  style={{ display: 'none' }}
+                />
+                <div
+                  style={{
+                    width: '44px',
+                    height: '44px',
+                    borderRadius: '50%',
+                    background: '#ede9fe',
+                    color: '#7f22fe',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '1.25rem',
+                  }}
+                >
+                  📄
+                </div>
+                <div>
+                  <p style={{ margin: 0, fontWeight: 700, fontSize: '0.88rem', color: '#1e293b' }}>
+                    {bulkImportFileName ? `Selected: ${bulkImportFileName}` : 'Click to browse or drag & drop CSV file'}
+                  </p>
+                  <p style={{ margin: '0.2rem 0 0', fontSize: '0.74rem', color: '#64748b' }}>
+                    Supported formats: .CSV, .TSV, .TXT with comma or tab delimiters
+                  </p>
+                </div>
+              </label>
+            </div>
+          )}
+
+          {/* Tab 2: Copy & Paste Textarea */}
+          {bulkImportTab === 'text' && (
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
+                Paste CSV Lines or Excel Spreadsheet Columns (Include Headers):
+              </label>
+              <textarea
+                rows={6}
+                placeholder="Contact Full Name,Company / Organization,Email Address,Phone Number,Estimated Deal Value,Lead Source,Customer Requirement,Assigned Sales Executive,Status&#10;Ramesh Kulkarni,Kulkarni Ent,ramesh@example.com,9876543210,350000,Website Form,50 Laptops,Karan Singh,NEW"
+                value={bulkImportText}
+                onChange={(e) => {
+                  setBulkImportText(e.target.value);
+                  processRawCSV(e.target.value);
+                }}
+                style={{
+                  width: '100%',
+                  padding: '0.65rem',
+                  borderRadius: '6px',
+                  border: '1px solid #cbd5e1',
+                  fontFamily: 'monospace',
+                  fontSize: '0.78rem',
+                  color: '#0f172a',
+                  background: '#ffffff',
+                }}
+              />
+            </div>
+          )}
+
+          {/* Default Assignment Options */}
+          <div className="resp-grid-2" style={{ background: '#f8fafc', padding: '0.85rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#475569', marginBottom: '0.25rem' }}>
+                Default Lead Source (if empty in row)
+              </label>
+              <select
+                value={bulkDefaultSource}
+                onChange={(e) => {
+                  setBulkDefaultSource(e.target.value);
+                  if (bulkImportText) processRawCSV(bulkImportText);
+                }}
+                style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem', background: '#ffffff' }}
+              >
+                <option value="Bulk Import">Bulk Import (Default)</option>
+                <option value="Website Form">Website Form</option>
+                <option value="IndiaMART">IndiaMART</option>
+                <option value="Facebook Ads">Facebook Ads</option>
+                <option value="JustDial">JustDial</option>
+                <option value="Manual">Manual (Direct)</option>
+              </select>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#475569', marginBottom: '0.25rem' }}>
+                Default Handled By (if empty in row)
+              </label>
+              <select
+                value={bulkDefaultExecutive}
+                onChange={(e) => {
+                  setBulkDefaultExecutive(e.target.value);
+                  if (bulkImportText) processRawCSV(bulkImportText);
+                }}
+                style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem', background: '#ffffff' }}
+              >
+                <option value="">-- Unassigned --</option>
+                {salesExecutives.map((emp) => (
+                  <option key={emp.id} value={emp.name}>
+                    {emp.name} ({emp.roleLabel || emp.designation})
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Preview & Validation Table */}
+          {bulkParsedRows.length > 0 && (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#334155' }}>
+                  Parsed Leads Preview ({bulkParsedRows.length} found)
+                </span>
+                <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.74rem' }}>
+                  <span style={{ padding: '2px 8px', borderRadius: '12px', background: '#dcfce7', color: '#166534', fontWeight: 700 }}>
+                    ✓ {bulkParsedRows.filter((r) => r.isValid).length} Valid
+                  </span>
+                  {bulkParsedRows.some((r) => !r.isValid) && (
+                    <span style={{ padding: '2px 8px', borderRadius: '12px', background: '#fee2e2', color: '#991b1b', fontWeight: 700 }}>
+                      ⚠ {bulkParsedRows.filter((r) => !r.isValid).length} With Errors
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div style={{ maxHeight: '220px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem', textAlign: 'left' }}>
+                  <thead>
+                    <tr style={{ background: '#f1f5f9', color: '#475569', fontWeight: 700, position: 'sticky', top: 0 }}>
+                      <th style={{ padding: '0.5rem 0.65rem' }}>#</th>
+                      <th style={{ padding: '0.5rem 0.65rem' }}>Status</th>
+                      <th style={{ padding: '0.5rem 0.65rem' }}>Contact Name</th>
+                      <th style={{ padding: '0.5rem 0.65rem' }}>Company</th>
+                      <th style={{ padding: '0.5rem 0.65rem' }}>Email</th>
+                      <th style={{ padding: '0.5rem 0.65rem' }}>Phone</th>
+                      <th style={{ padding: '0.5rem 0.65rem' }}>Deal Value</th>
+                      <th style={{ padding: '0.5rem 0.65rem' }}>Handled By</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {bulkParsedRows.map((r, idx) => (
+                      <tr
+                        key={r.id || idx}
+                        style={{
+                          borderBottom: '1px solid #f1f5f9',
+                          background: r.isValid ? 'transparent' : '#fff1f2',
+                        }}
+                      >
+                        <td style={{ padding: '0.45rem 0.65rem', color: '#64748b' }}>{idx + 1}</td>
+                        <td style={{ padding: '0.45rem 0.65rem' }}>
+                          {r.isValid ? (
+                            <span style={{ color: '#16a34a', fontWeight: 700 }}>✓ Valid</span>
+                          ) : (
+                            <span style={{ color: '#dc2626', fontWeight: 700 }} title={r.errors?.join(', ')}>
+                              ⚠ {r.errors?.[0] || 'Invalid'}
+                            </span>
+                          )}
+                        </td>
+                        <td style={{ padding: '0.45rem 0.65rem', fontWeight: 600, color: '#0f172a' }}>{r.name || '—'}</td>
+                        <td style={{ padding: '0.45rem 0.65rem', color: '#475569' }}>{r.company || '—'}</td>
+                        <td style={{ padding: '0.45rem 0.65rem', color: '#0f172a' }}>{r.email || '—'}</td>
+                        <td style={{ padding: '0.45rem 0.65rem', color: '#475569' }}>{r.phone || '—'}</td>
+                        <td style={{ padding: '0.45rem 0.65rem', fontWeight: 600, color: '#0f172a' }}>
+                          {r.value ? `₹${r.value}` : '—'}
+                        </td>
+                        <td style={{ padding: '0.45rem 0.65rem', color: '#64748b' }}>{r.assignedTo || 'Unassigned'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Bottom Actions */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
+            <button
+              type="button"
+              onClick={() => {
+                setBulkParsedRows([]);
+                setBulkImportFileName('');
+                setBulkImportText('');
+              }}
+              style={{
+                fontSize: '0.8rem',
+                color: '#64748b',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              Clear Data
+            </button>
+
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowBulkImportModal(false);
+                  setBulkParsedRows([]);
+                  setBulkImportFileName('');
+                  setBulkImportText('');
+                }}
+                style={{
+                  padding: '0.6rem 1.25rem',
+                  borderRadius: '6px',
+                  border: '1px solid #cbd5e1',
+                  background: '#ffffff',
+                  color: '#475569',
+                  fontWeight: 600,
+                  fontSize: '0.86rem',
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isImportingLeads || bulkParsedRows.filter((r) => r.isValid).length === 0}
+                onClick={handleSubmitBulkImport}
+                style={{
+                  padding: '0.6rem 1.45rem',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background:
+                    isImportingLeads || bulkParsedRows.filter((r) => r.isValid).length === 0
+                      ? '#c4b5fd'
+                      : 'linear-gradient(135deg, #7f22fe 0%, #6b12df 100%)',
+                  color: '#ffffff',
+                  fontWeight: 700,
+                  fontSize: '0.86rem',
+                  cursor:
+                    isImportingLeads || bulkParsedRows.filter((r) => r.isValid).length === 0
+                      ? 'not-allowed'
+                      : 'pointer',
+                  boxShadow: '0 4px 12px rgba(127, 34, 254, 0.25)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                }}
+              >
+                {isImportingLeads ? 'Importing...' : `Import ${bulkParsedRows.filter((r) => r.isValid).length} Valid Leads`}
+              </button>
+            </div>
+          </div>
+        </div>
       </Modal>
 
       {/* ------------------------------------------------------------- */}

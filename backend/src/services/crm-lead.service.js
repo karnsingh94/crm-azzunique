@@ -509,6 +509,204 @@ export const crmLeadService = {
       opportunity,
     };
   },
+
+  /**
+   * Get list of sales executives / employees available for assignment
+   * Filtered by caller role:
+   * - Company Admin: all employees in company + admin
+   * - Department Head: employees in their department/service + head
+   * - Team Leader: employees in their team + leader
+   */
+  async getSalesExecutives(companyId, actor = {}) {
+    const cid = String(companyId);
+    const company = await prisma.clientAdmin.findUnique({
+      where: { id: cid },
+      select: { id: true, name: true, email: true, organizationName: true },
+    });
+    if (!company) throw leadError('Company not found.', 404);
+
+    const list = [];
+
+    // Add company admin option if admin or super admin
+    if (actor?.role === 'COMPANY_ADMIN' || actor?.role === 'SUPER_ADMIN') {
+      list.push({
+        id: company.id,
+        name: company.name || 'Company Admin',
+        email: company.email,
+        role: 'COMPANY_ADMIN',
+        roleLabel: 'Company Admin',
+        designation: 'Owner / Administrator',
+      });
+    }
+
+    const where = { companyId: cid, status: 'ACTIVE' };
+
+    if (actor?.role === 'DEPARTMENT_HEAD' || actor?.role === 'SERVICE_HEAD') {
+      const employeeId = String(actor?.userId || '');
+      const head = await prisma.companyEmployee.findFirst({
+        where: { id: employeeId, companyId: cid, status: 'ACTIVE' },
+        include: { department: true, team: true },
+      });
+      if (head) {
+        list.push({
+          id: head.id,
+          name: head.name,
+          email: head.email,
+          role: head.accessRole || 'DEPARTMENT_HEAD',
+          roleLabel: 'Department Head',
+          designation: head.role || 'Department Head',
+        });
+        const serviceId = head?.department?.serviceId || head?.team?.serviceId;
+        if (serviceId) {
+          where.OR = [
+            { department: { serviceId } },
+            { team: { serviceId } },
+          ];
+        }
+      }
+    } else if (actor?.role === 'TEAM_LEADER') {
+      const employeeId = String(actor?.userId || '');
+      const leader = await prisma.companyEmployee.findUnique({ where: { id: employeeId } });
+      const team = await prisma.companyServiceTeam.findFirst({
+        where: { companyId: cid, headEmployeeId: employeeId },
+        select: { id: true },
+      });
+      if (leader) {
+        list.push({
+          id: leader.id,
+          name: leader.name,
+          email: leader.email,
+          role: leader.accessRole || 'TEAM_LEADER',
+          roleLabel: 'Team Leader',
+          designation: leader.role || 'Team Leader',
+        });
+      }
+      if (team) {
+        where.teamId = team.id;
+      }
+    }
+
+    const employees = await prisma.companyEmployee.findMany({
+      where,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        accessRole: true,
+        phone: true,
+        department: { select: { name: true } },
+        team: { select: { name: true } },
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    for (const emp of employees) {
+      if (!list.some((item) => item.id === emp.id || item.email.toLowerCase() === emp.email.toLowerCase())) {
+        list.push({
+          id: emp.id,
+          name: emp.name,
+          email: emp.email,
+          role: emp.accessRole,
+          roleLabel: emp.accessRole === 'DEPARTMENT_HEAD' ? 'Department Head' : emp.accessRole === 'TEAM_LEADER' ? 'Team Leader' : 'Sales Executive',
+          designation: emp.role || emp.team?.name || emp.department?.name || 'Sales Representative',
+        });
+      }
+    }
+
+    return list;
+  },
+
+  /**
+   * Bulk import leads
+   */
+  async bulkImport(companyId, rawLeads = [], currentUser = {}) {
+    if (!Array.isArray(rawLeads) || rawLeads.length === 0) {
+      throw leadError('Provide a non-empty array of leads to import.', 400);
+    }
+
+    const cid = String(companyId);
+    const company = await prisma.clientAdmin.findUnique({
+      where: { id: cid },
+      include: { subscriptionPlan: true },
+    });
+    if (!company) throw leadError('Company not found.', 404);
+
+    const validLeads = [];
+    const errors = [];
+
+    // Check Subscription Lead Quota
+    const currentLeadsCount = await prisma.lead.count({ where: { companyId: cid } });
+    const maxLeads = company?.subscriptionPlan?.maxLeads;
+
+    for (let i = 0; i < rawLeads.length; i++) {
+      const raw = rawLeads[i];
+      try {
+        const normalized = normalizeLeadInput({
+          name: raw.name || raw['Contact Full Name'] || raw['contact_name'] || raw['Name'],
+          company: raw.company || raw['Company / Organization'] || raw['organization'] || raw['Company'],
+          email: raw.email || raw['Email Address'] || raw['email_address'] || raw['Email'],
+          phone: raw.phone || raw['Phone Number'] || raw['phone_number'] || raw['Phone'] || raw['Mobile'],
+          value: raw.value || raw['Estimated Deal Value'] || raw['deal_value'] || raw['Value'],
+          source: raw.source || raw['Lead Source'] || raw['source'] || 'Bulk Import',
+          requirements: raw.requirements || raw['Customer Requirement'] || raw['Requirements'] || raw['Notes'],
+          assignedTo: raw.assignedTo || raw['Assigned Sales Executive'] || raw['handled_by'] || raw['Executive'],
+          status: raw.status || raw['Status'] || 'NEW',
+          priority: raw.priority || 'MEDIUM',
+        });
+
+        if (maxLeads && (currentLeadsCount + validLeads.length + 1) > maxLeads) {
+          errors.push({
+            row: i + 1,
+            name: raw.name || `Row ${i + 1}`,
+            error: `Plan limit of ${maxLeads} leads reached. Upgrade plan to import more.`,
+          });
+          break;
+        }
+
+        validLeads.push({
+          ...normalized,
+          companyId: cid,
+        });
+      } catch (err) {
+        errors.push({
+          row: i + 1,
+          name: raw.name || raw['Contact Full Name'] || `Row ${i + 1}`,
+          error: err.message,
+        });
+      }
+    }
+
+    if (validLeads.length === 0) {
+      throw leadError(`No valid leads found to import. ${errors.length} rows had errors: ${errors.map(e => `Row ${e.row}: ${e.error}`).join('; ')}`, 400);
+    }
+
+    // Insert valid leads
+    const createdLeads = [];
+    for (const leadData of validLeads) {
+      const lead = await prisma.lead.create({
+        data: leadData,
+      });
+      createdLeads.push(lead);
+    }
+
+    // Audit Log
+    await auditService.logAction({
+      companyId: cid,
+      actor: currentUser,
+      action: 'BULK_IMPORT_LEADS',
+      entityType: 'LEAD',
+      entityId: cid,
+      afterState: { count: createdLeads.length, skipped: errors.length },
+      reason: `Bulk imported ${createdLeads.length} leads into pipeline`,
+    });
+
+    return {
+      count: createdLeads.length,
+      imported: createdLeads.map(formatLead),
+      errors,
+    };
+  },
 };
 
 export default crmLeadService;

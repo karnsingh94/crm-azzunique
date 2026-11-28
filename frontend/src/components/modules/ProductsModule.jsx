@@ -374,6 +374,7 @@ export default function ProductsModule({ activeCompany, showToast, initialSubTab
   const [productForm, setProductForm] = useState({
     sku: '',
     name: '',
+    hsnCode: '',
     description: '',
     category: '',
     uom: 'PCS',
@@ -451,7 +452,7 @@ export default function ProductsModule({ activeCompany, showToast, initialSubTab
   };
 
   const handleOpenEditModal = (p) => {
-    setProductToEdit({ ...p, taxRate: p.taxRate ?? 18, stock: p.stock ?? 0 });
+    setProductToEdit({ ...p, hsnCode: p.hsnCode || '', taxRate: p.taxRate ?? 18, stock: p.stock ?? 0 });
     setEditImageFile(null);
     setEditImagePreview('');
     setEditImageRemoved(false);
@@ -484,6 +485,7 @@ export default function ProductsModule({ activeCompany, showToast, initialSubTab
         const fd = new FormData();
         fd.append('sku', productForm.sku.trim().toUpperCase());
         fd.append('name', productForm.name.trim());
+        fd.append('hsnCode', productForm.hsnCode?.trim() || '');
         fd.append('description', productForm.description?.trim() || '');
         fd.append('category', productForm.category.trim());
         fd.append('uom', productForm.uom || 'PCS');
@@ -499,6 +501,7 @@ export default function ProductsModule({ activeCompany, showToast, initialSubTab
           ...productForm,
           sku: productForm.sku.trim().toUpperCase(),
           name: productForm.name.trim(),
+          hsnCode: productForm.hsnCode?.trim() || '',
           sellingPrice: sPrice,
           purchasePrice: pPrice,
           taxRate: productForm.taxRate !== undefined && productForm.taxRate !== '' ? parseFloat(productForm.taxRate) : 18,
@@ -512,6 +515,7 @@ export default function ProductsModule({ activeCompany, showToast, initialSubTab
       setProductForm({
         sku: '',
         name: '',
+        hsnCode: '',
         description: '',
         category: categories[0]?.name || '',
         uom: 'PCS',
@@ -553,6 +557,7 @@ export default function ProductsModule({ activeCompany, showToast, initialSubTab
       if (editImageFile) {
         const fd = new FormData();
         fd.append('name', productToEdit.name.trim());
+        fd.append('hsnCode', productToEdit.hsnCode?.trim() || '');
         fd.append('description', productToEdit.description || '');
         fd.append('category', productToEdit.category);
         fd.append('uom', productToEdit.uom);
@@ -566,6 +571,7 @@ export default function ProductsModule({ activeCompany, showToast, initialSubTab
       } else {
         payload = {
           name: productToEdit.name.trim(),
+          hsnCode: productToEdit.hsnCode?.trim() || '',
           description: productToEdit.description || '',
           category: productToEdit.category,
           uom: productToEdit.uom,
@@ -1233,8 +1239,13 @@ export default function ProductsModule({ activeCompany, showToast, initialSubTab
                           onEnlarge={(url) => setImageToEnlarge({ url, title: p.name, sku: p.sku })}
                         />
                       </td>
-                      <td style={{ padding: '0.85rem 1.25rem', fontWeight: 800, color: '#7f22fe', whiteSpace: 'nowrap' }}>
-                        {p.sku}
+                      <td style={{ padding: '0.85rem 1.25rem', whiteSpace: 'nowrap' }}>
+                        <div style={{ fontWeight: 800, color: '#7f22fe' }}>{p.sku}</div>
+                        {p.hsnCode && (
+                          <span style={{ fontSize: '0.72rem', color: '#475569', background: '#f1f5f9', padding: '1px 6px', borderRadius: '4px', fontWeight: 600, display: 'inline-block', marginTop: '2px' }}>
+                            HSN: {p.hsnCode}
+                          </span>
+                        )}
                       </td>
                       <td style={{ padding: '0.85rem 1rem', whiteSpace: 'nowrap' }}>
                         <div style={{ fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap' }}>{p.name}</div>
@@ -1896,18 +1907,33 @@ export default function ProductsModule({ activeCompany, showToast, initialSubTab
             </div>
           </div>
 
-          <div>
-            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '0.35rem' }}>
-              Product Title / Name *
-            </label>
-            <input
-              type="text"
-              required
-              placeholder="e.g. Precision CNC Machined Flange 100mm"
-              value={productForm.name}
-              onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
-              style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
-            />
+          <div className="resp-grid-2">
+            <div>
+              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '0.35rem' }}>
+                Product Title / Name *
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. Precision CNC Machined Flange 100mm"
+                value={productForm.name}
+                onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
+                style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '0.35rem' }}>
+                HSN / SAC Code
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. 84713010"
+                value={productForm.hsnCode || ''}
+                onChange={(e) => setProductForm({ ...productForm, hsnCode: e.target.value })}
+                style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+              />
+            </div>
           </div>
 
           <div>
@@ -2054,7 +2080,7 @@ export default function ProductsModule({ activeCompany, showToast, initialSubTab
               />
             </div>
 
-            <div className="resp-grid-2">
+            <div className="resp-grid-3">
               <div>
                 <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '0.35rem' }}>
                   Category
@@ -2076,6 +2102,19 @@ export default function ProductsModule({ activeCompany, showToast, initialSubTab
                     </option>
                   ))}
                 </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '0.35rem' }}>
+                  HSN / SAC Code
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. 84713010"
+                  value={productToEdit.hsnCode || ''}
+                  onChange={(e) => setProductToEdit({ ...productToEdit, hsnCode: e.target.value })}
+                  style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                />
               </div>
 
               <div>
@@ -2278,6 +2317,10 @@ export default function ProductsModule({ activeCompany, showToast, initialSubTab
               <div>
                 <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Category</span>
                 <p style={{ margin: 0, fontWeight: 700, color: '#334155' }}>{productToView.category}</p>
+              </div>
+              <div>
+                <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>HSN / SAC Code</span>
+                <p style={{ margin: 0, fontWeight: 700, color: '#334155' }}>{productToView.hsnCode || '—'}</p>
               </div>
             </div>
 

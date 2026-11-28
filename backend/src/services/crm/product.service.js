@@ -206,6 +206,7 @@ export const productService = {
             requiresMfgDate: Boolean(data.requiresMfgDate),
             requiresExpDate: Boolean(data.requiresExpDate),
             mrp: data.mrp !== undefined && data.mrp !== '' ? parseFloat(data.mrp) : null,
+            hsnCode: data.hsnCode?.trim() || null,
           },
         });
 
@@ -386,6 +387,7 @@ export const productService = {
     if (data.requiresMfgDate !== undefined) updateData.requiresMfgDate = Boolean(data.requiresMfgDate);
     if (data.requiresExpDate !== undefined) updateData.requiresExpDate = Boolean(data.requiresExpDate);
     if (data.mrp !== undefined) updateData.mrp = data.mrp !== '' ? parseFloat(data.mrp) : null;
+    if (data.hsnCode !== undefined) updateData.hsnCode = data.hsnCode?.trim() || null;
 
     try {
       const result = await prisma.$transaction(async (tx) => {

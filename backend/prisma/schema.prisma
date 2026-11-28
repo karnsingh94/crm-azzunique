@@ -592,6 +592,7 @@ model Product {
   requiresMfgDate       Boolean          @default(false) @map("requires_mfg_date")
   requiresExpDate       Boolean          @default(false) @map("requires_exp_date")
   mrp                   Decimal?         @db.Decimal(15, 2)
+  hsnCode               String?          @map("hsn_code") @db.VarChar(50)
   createdAt     DateTime         @default(now()) @map("created_at")
   updatedAt     DateTime         @updatedAt @map("updated_at")
 
