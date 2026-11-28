@@ -11,7 +11,7 @@ export function getApiBaseUrl() {
     const isLocalhost = host === 'localhost' || host === '127.0.0.1' || host === '[::1]';
     // In browser: only allow localhost URL if the user is actually on localhost/loopback
     if (isLocalhost) {
-      return process.env.NEXT_PUBLIC_API_URL || 'https://crm.azzunique.in/api';
+      return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
     }
     // For ANY live/production environment (crm.azzunique.in, server IP, or custom domain):
     // ABSOLUTE RULE: Never return localhost under any circumstance on a remote client browser.
@@ -232,7 +232,6 @@ export async function apiRequest(endpoint, options = {}) {
         abortErr.didTimeout = didTimeout;
         throw abortErr;
       }
-      console.error('API request failed:', error.message || error);
 
       const networkErr = new Error(error.message || 'Network connection failed. Ensure backend server is running.');
       networkErr.status = 0;
