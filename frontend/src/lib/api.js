@@ -232,6 +232,7 @@ export async function apiRequest(endpoint, options = {}) {
         abortErr.didTimeout = didTimeout;
         throw abortErr;
       }
+      console.error('API request failed:', error.message || error);
 
       const networkErr = new Error(error.message || 'Network connection failed. Ensure backend server is running.');
       networkErr.status = 0;
